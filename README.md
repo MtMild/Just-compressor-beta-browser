@@ -4,6 +4,8 @@ A Pro-C-style compressor in purple. Stage 1 of 2: this page runs a real-time DSP
 
 ## Try it
 
+**Live demo:** https://claude.ai/artifact/NC4nGpkKcGLe72njapVu1J
+
 1. Open `dist/index.html` in Chrome or Edge (double-click works), or open the published artifact link. The line next to the file name shows which audio engine runs: `AudioWorklet` (best) or `fallback (main thread)`, used only when the host page blocks worklets.
 2. Click **Load audio** (or drop a WAV/MP3 onto the page), then **Play**.
 3. Pick a preset (top bar), or turn knobs. Use the Demo player's **Compressed / Original** button to compare at equal loudness.
