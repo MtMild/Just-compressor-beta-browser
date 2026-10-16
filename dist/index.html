@@ -1,0 +1,3179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purple Compressor</title>
+<link rel="icon" href="data:,">
+<style>:root{color-scheme:dark;--bg0:hsl(265 18% 5%);--bg1:hsl(265 16% 8%);--panel:hsl(265 14% 11%);--panel-hi:hsl(265 12% 15%);--edge:hsl(265 10% 22%);--text:hsl(0 0% 93%);--text-dim:hsl(0 0% 62%);--white:hsl(0 0% 98%);--grey1:hsl(0 0% 40%);--grey2:hsl(0 0% 22%);--grey3:hsl(0 0% 14%);--zone-bg:hsl(0 0% 20% / 0.42);--zone-fade:hsl(0 0% 20% / 0.04);--melt-from:hsl(265 18% 5% / 0);--grid-minor:hsl(265 12% 18% / 0.45);--ghost-fill:hsl(0 0% 70% / 0.08);--ghost-line:hsl(0 0% 80% / 0.38);--hist-fade:hsl(0 0% 62% / 0.03);--out-fill:hsl(272 7% 68% / 0.32);--out-fade:hsl(272 7% 68% / 0.04);--out-line:hsl(274 75% 88%);--range-line:hsl(2 40% 56% / 0.42);--range-text:hsl(2 40% 66% / 0.75);--sc-bg:hsl(0 0% 12%);--accent:hsl(272 86% 68%);--accent-hi:hsl(280 92% 82%);--accent-lo:hsl(266 62% 46%);--glow:hsl(274 92% 66% / 0.38);--grid:hsl(265 12% 18%);--hist-fill:hsl(0 0% 62% / 0.30);--hist-line:hsl(0 0% 85% / 0.75);--red:hsl(2 82% 56%);--red-fill:hsl(2 82% 56% / 0.25);--red-dim:hsl(2 60% 38%);--gr:hsl(2 82% 56%);--gr-fill:hsl(2 82% 56% / 0.10);--boost:hsl(276 80% 88%);--boost-fill:hsl(276 80% 80% / 0.28);--curve:hsl(278 74% 74%);--threshold-line:hsl(0 0% 80% / 0.7);--meter-low:hsl(262 70% 40%);--meter-mid:hsl(272 82% 58%);--meter-hi:hsl(286 92% 80%);--clip:hsl(2 90% 58%)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg0);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px}
+body{min-height:100vh;background-color:var(--bg0);background-image:radial-gradient(1200px 600px at 50% -10%,hsl(268 40% 14%),var(--bg0))}
+#app{max-width:1100px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--edge);border-radius:8px;background:linear-gradient(var(--panel-hi),var(--panel));color:var(--text);font:inherit;cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-hi)}
+.transport{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.chk{display:flex;gap:6px;align-items:center;color:var(--text-dim)}
+#status{color:var(--text-dim)}
+#error{flex-basis:100%;color:var(--accent-hi);min-height:0}
+.knobs{display:flex;flex-wrap:wrap;gap:18px;padding:16px;border:1px solid var(--edge);border-radius:12px;background:var(--panel)}
+.knob{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;user-select:none;width:84px}
+.knob svg{width:72px;height:72px;touch-action:none;cursor:ns-resize;outline:none;overflow:visible}
+.knob.small svg{width:52px;height:52px}
+.knob svg:focus-visible .track{stroke:var(--accent-lo)}
+.knob .body{fill:var(--bg1);stroke:var(--edge);stroke-width:1.5}
+.knob .track{fill:none;stroke:var(--edge);stroke-width:4;stroke-linecap:round}
+.knob .fill{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;filter:drop-shadow(0 0 3px var(--glow))}
+.knob .ind{stroke:var(--accent-hi);stroke-width:2.5;stroke-linecap:round}
+.knob .knob-value,.style-block .knob-value{color:var(--text);font-size:12px;font-weight:600;min-height:15px;font-variant-numeric:tabular-nums}
+.knob .knob-label,.style-block .knob-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.knob.dragging .knob-label,.knob:hover .knob-label{color:var(--accent-hi)}
+.tooltip{position:fixed;z-index:50;max-width:300px;padding:10px 13px;border-radius:8px;border:1px solid var(--accent-lo);background:var(--bg1);color:var(--text);font-size:12px;line-height:1.35;box-shadow:0 6px 24px hsl(265 60% 3% / .7),0 0 14px var(--glow);opacity:0;pointer-events:none;transition:opacity .12s}
+.tooltip.show{opacity:1}
+.tooltip::before{content:"";position:absolute;top:-6px;left:var(--arrow-x,20px);width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:var(--bg1);border-left:1px solid var(--accent-lo);border-top:1px solid var(--accent-lo)}
+.display-wrap .scale-menu{position:absolute;right:54px;bottom:10px;z-index:5}
+.display-wrap .scale-menu .menu-btn{min-width:0;padding:4px 12px;font-size:12px;background:hsl(265 16% 8% / .8);color:var(--text-dim)}
+.menu.up .menu-list{top:auto;bottom:100%;margin:0 0 4px;left:auto;right:0;min-width:96px}
+.menu-list button[aria-checked]{padding-left:30px;position:relative}
+.menu-list button[aria-checked="true"]::before{content:"\2713";position:absolute;left:10px;color:var(--accent-hi)}
+[hidden]{display:none!important}
+.topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;padding:8px 12px;border:1px solid var(--edge);border-radius:12px;background:var(--panel)}
+.logo{font-weight:700;letter-spacing:.04em;font-size:18px;color:var(--accent-hi);margin-right:6px}
+.logo span{color:var(--accent);margin:0 2px}
+.spacer{flex:1}
+.icon-btn,.toggle,.menu-btn{padding:6px 12px;border:1px solid var(--edge);border-radius:8px;background:linear-gradient(var(--panel-hi),var(--panel));color:var(--text);font:inherit;cursor:pointer}
+.icon-btn:hover:not(:disabled),.toggle:hover,.menu-btn:hover{border-color:var(--accent)}
+.icon-btn:disabled{opacity:.4;cursor:default}
+.icon-btn[aria-pressed="true"],.toggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-hi);box-shadow:0 0 10px var(--glow)}
+.ab-group,.preset-group{display:flex;gap:4px;align-items:center}
+.menu{position:relative}
+.menu-btn{min-width:150px;text-align:center}
+.menu-list{display:none;position:absolute;z-index:20;top:100%;left:0;min-width:100%;margin-top:4px;padding:4px;border:1px solid var(--accent-lo);border-radius:10px;background:var(--bg1);box-shadow:0 10px 30px hsl(265 60% 3% / .8)}
+.menu.open .menu-list{display:block}
+.menu-list button{display:block;width:100%;padding:7px 12px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;white-space:nowrap}
+.menu-list button:hover{background:var(--accent-lo);color:var(--text)}
+.help-panel{margin-bottom:12px;padding:10px 16px;border:1px solid var(--edge);border-radius:12px;background:var(--panel);color:var(--text-dim)}
+.help-panel p{margin:4px 0}
+.knobs.main{margin-bottom:12px;align-items:flex-start}
+.knobs .sep{width:1px;align-self:stretch;background:var(--edge)}
+.style-block{display:grid;grid-template-rows:72px auto auto;row-gap:2px;align-items:center;justify-items:center;width:84px;padding-bottom:22px}
+.style-block .menu-btn{min-width:80px}
+.row2{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.row2 .knobs{padding:10px 14px;gap:10px;align-items:center}
+.up-block .up-panel{display:flex;gap:10px}
+.sc-panel .panel-title{align-self:flex-start;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);writing-mode:vertical-rl;transform:rotate(180deg)}
+canvas.hpf-curve{border:1px solid var(--edge);border-radius:8px}
+.bottombar{display:flex;gap:18px;align-items:center;padding:8px 14px;border:1px solid var(--edge);border-radius:12px;background:var(--panel);color:var(--text-dim);font-size:12px}
+.up-block .up-panel{flex-wrap:wrap}
+.row2>.knobs{max-width:100%}
+.knobs.main{justify-content:center}
+@media (max-width:520px){.knobs{gap:10px;padding:12px}.menu-btn{min-width:120px}}
+input[type=checkbox],input[type=range]{accent-color:var(--accent)}
+button:focus-visible,[role=slider]:focus-visible,input:focus-visible,canvas:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#seek{width:min(260px,100%)}
+#engine-mode{color:var(--text-dim);font-size:11px}
+
+/* ---- v2 layout: demo strip + plugin frame with integrated display and settings ---- */
+.demo-bar{margin-bottom:12px;padding:8px 12px;border:1px dashed var(--edge);border-radius:12px}
+.demo-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-right:4px}
+#plugin{border:1px solid var(--edge);border-radius:14px;background:var(--bg1);overflow:hidden}
+#plugin .topbar{margin:0;border:0;border-bottom:1px solid var(--edge);border-radius:0}
+#plugin .help-panel{margin:0;border:0;border-bottom:1px solid var(--edge);border-radius:0}
+.stage{position:relative}
+.display-row{display:flex;gap:0;align-items:stretch}
+.display-wrap{position:relative;flex:1;min-width:0;overflow:hidden}
+canvas.display{display:block;width:100%;height:400px;touch-action:none}
+canvas.meters{display:block;border-left:1px solid var(--edge)}
+.settings{display:flex;flex-direction:column;gap:6px;padding:14px 14px 12px;background:linear-gradient(to bottom,var(--bg0),var(--bg1))}
+.settings-main{display:flex;gap:14px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.settings-main .knob{padding-bottom:22px}
+.settings-small{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.auto-pill{position:absolute;bottom:0;left:50%;transform:translateX(-50%);padding:1px 9px;border:1px solid var(--grey1);border-radius:999px;background:transparent;color:var(--text-dim);font:inherit;font-size:9px;cursor:pointer;white-space:nowrap;letter-spacing:.06em}
+.auto-pill:hover{border-color:var(--accent);color:var(--text)}
+.auto-pill[aria-pressed="true"]{background:var(--accent-lo);border-color:var(--accent);color:var(--white)}
+.acc{border-top:1px solid var(--edge)}
+.acc-head{display:flex;align-items:center;gap:12px;padding:6px 12px}
+.acc-btn{display:flex;align-items:center;gap:8px;padding:4px 6px;border:0;background:transparent;color:var(--text);font:inherit;letter-spacing:.08em;text-transform:uppercase;font-size:11px;cursor:pointer}
+.acc-btn .chev{width:7px;height:7px;border-right:2px solid var(--text-dim);border-bottom:2px solid var(--text-dim);transform:rotate(-45deg);transition:transform .25s ease}
+.acc.open .acc-btn .chev{transform:rotate(45deg)}
+.acc-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.acc.open .acc-wrap{grid-template-rows:1fr}
+.acc-body{overflow:hidden;min-height:0}
+.acc-inner{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:6px 16px 14px}
+@media (prefers-reduced-motion:reduce){.acc-wrap,.acc-btn .chev{transition:none}}
+#plugin .bottombar{border:0;border-top:1px solid var(--edge);border-radius:0}
+
+.meter-col{position:relative;flex:none;width:64px}
+.meter-nums{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-around;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;pointer-events:none}
+.gr-num{color:var(--red)}
+.out-num{color:var(--white)}
+.knob .zero-tick{stroke:var(--white);stroke-width:1.5}
+.knob .zero-label{fill:var(--white);font:600 9px system-ui,sans-serif}
+.knob .ring-canvas{position:absolute;left:50%;top:36px;width:88px;height:88px;transform:translate(-50%,-50%);pointer-events:none}
+.knob.small .ring-canvas{top:26px}
+/* AUTO: the knob is greyed out and locked, the dial turns by itself; the Threshold ring keeps its colours */
+.knob.auto-on svg{cursor:default}
+.knob.auto-on .fill{stroke:var(--grey1);filter:none}
+.knob.auto-on .ind{stroke:var(--text-dim)}
+.knob.auto-on .body{stroke:var(--grey2)}
+.knob.auto-on .knob-value{color:var(--text-dim)}
+
+.acc-inner:has(.sc-main){align-items:stretch;gap:20px}
+.sc-level-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sc-level{writing-mode:vertical-lr;direction:rtl;width:22px;height:150px;margin:0}
+.sc-main{display:flex;flex-direction:column;gap:10px;flex:1 1 380px;min-width:0;max-width:760px}
+canvas.sc-eq{display:block;width:100%;height:200px;border:1px solid var(--edge);border-radius:8px;touch-action:none}
+.sc-knobs{display:flex;gap:12px;flex-wrap:wrap}
+.sc-side{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.sc-source{font-size:11px;color:var(--text-dim)}
+.acc-inner{align-items:flex-start}
+.sc-knobs{align-items:flex-start}
+.sc-level-wrap{align-self:flex-start}
+
+.sc-group{display:flex;flex-direction:column;align-items:center;gap:6px}
+.seg{display:flex;flex-direction:column;align-items:center;gap:3px}
+.seg-row{display:flex;border:1px solid var(--grey1);border-radius:999px;overflow:hidden}
+.seg-row button{padding:2px 9px;border:0;border-right:1px solid var(--grey2);background:transparent;color:var(--text-dim);font:inherit;font-size:10px;cursor:pointer}
+.seg-row button:last-child{border-right:0}
+.seg-row button:hover{color:var(--text)}
+.seg-row button[aria-pressed="true"]{background:var(--accent-lo);color:var(--white)}
+
+/* Upward indicator: not a button, it only shows the state */
+.lamp{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border:1px solid var(--edge);border-radius:8px;color:var(--text-dim);font-size:12px;user-select:none}
+.lamp::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--grey2)}
+.lamp[data-state="on"]{color:var(--accent-hi);border-color:var(--accent);box-shadow:0 0 10px var(--glow)}
+.lamp[data-state="on"]::before{background:var(--accent-hi);box-shadow:0 0 8px var(--accent)}
+
+
+/* settings popover (gear) */
+.gear-wrap{position:relative}
+.icon-btn.gear{display:inline-flex;align-items:center;padding:6px 9px}
+.pop{position:absolute;z-index:30;right:0;top:100%;margin-top:6px;width:330px;padding:6px;border:1px solid var(--accent-lo);border-radius:12px;background:var(--bg1);box-shadow:0 12px 34px hsl(265 60% 3% / .85)}
+.pop[hidden]{display:none}
+.pop-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 10px}
+.pop-row+.pop-row{border-top:1px solid var(--grid)}
+.pop-text div{font-size:13px;color:var(--text)}
+.pop-text small{display:block;margin-top:2px;font-size:11px;color:var(--text-dim)}
+.switch{position:relative;flex:none;width:38px;height:22px;border:1px solid var(--grey1);border-radius:999px;background:var(--bg0);cursor:pointer;padding:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-dim);transition:transform .15s,background .15s}
+.switch[aria-checked="true"]{border-color:var(--accent);background:var(--accent-lo)}
+.switch[aria-checked="true"]::after{transform:translateX(16px);background:var(--white)}
+.pop .seg{align-items:flex-end}
+.pop .seg .knob-label{display:none}
+
+.sc-key-hint{font-size:11px;color:var(--text-dim);max-width:150px;text-align:center;overflow-wrap:anywhere}
+.sc-key-hint.warn{color:var(--accent-hi)}
+
+.acc-inner.sc-off{opacity:.4}
+#sc-enable{padding:4px 12px;font-size:12px}
+
+/* hot bar (bottom left): small icon buttons */
+.hotbar{display:flex;align-items:center;gap:6px}
+.hot-btn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:28px;padding:0 8px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text-dim);font:600 11px system-ui,sans-serif;letter-spacing:.02em;cursor:pointer}
+.hot-btn:hover{color:var(--text);border-color:var(--accent)}
+.hot-btn[aria-pressed="true"]{color:var(--accent-hi);border-color:var(--accent);background:var(--accent-lo);box-shadow:0 0 8px var(--glow)}
+#bpm-readout{margin-left:4px;color:var(--text-dim);font-variant-numeric:tabular-nums}
+#bpm{width:56px;padding:2px 4px;border:1px solid var(--edge);border-radius:6px;background:var(--bg1);color:var(--text);font:inherit}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>window.__WORKLET_SRC__ = "(() => {\n  // dsp/util.js\n  var dbToLin = (db2) => Math.pow(10, db2 / 20);\n  var linToDb = (lin) => lin <= 1e-6 ? -120 : 20 * Math.log10(lin);\n  var clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;\n\n  // dsp/tempo.js\n  var NOTES = [\n    { label: \"1/32\", beats: 0.125 },\n    { label: \"1/16T\", beats: 1 / 6 },\n    { label: \"1/16\", beats: 0.25 },\n    { label: \"1/8T\", beats: 1 / 3 },\n    { label: \"1/8\", beats: 0.5 },\n    { label: \"1/4T\", beats: 2 / 3 },\n    { label: \"1/8D\", beats: 0.75 },\n    { label: \"1/4\", beats: 1 },\n    { label: \"1/2T\", beats: 4 / 3 },\n    { label: \"1/4D\", beats: 1.5 },\n    { label: \"1/2\", beats: 2 },\n    { label: \"1/2D\", beats: 3 },\n    { label: \"1/1\", beats: 4 }\n  ];\n  var DEFAULT_NOTE = NOTES.findIndex((n2) => n2.label === \"1/8\");\n  var ATTACK_NOTES = [\n    { label: \"1/256\", beats: 1 / 64 },\n    { label: \"1/128T\", beats: 1 / 48 },\n    { label: \"1/128\", beats: 1 / 32 },\n    { label: \"1/64T\", beats: 1 / 24 },\n    { label: \"1/64\", beats: 1 / 16 },\n    { label: \"1/32T\", beats: 1 / 12 },\n    { label: \"1/32\", beats: 1 / 8 },\n    { label: \"1/16T\", beats: 1 / 6 },\n    { label: \"1/16\", beats: 1 / 4 },\n    { label: \"1/8T\", beats: 1 / 3 },\n    { label: \"1/8\", beats: 1 / 2 }\n  ];\n  var DEFAULT_ATTACK_NOTE = ATTACK_NOTES.findIndex((n2) => n2.label === \"1/128\");\n  var noteToMs = (index, bpm, list = NOTES, maxMs = 2500) => Math.min(maxMs, Math.max(0.1, list[Math.max(0, Math.min(list.length - 1, Math.round(index)))].beats * 6e4 / bpm));\n\n  // dsp/params.js\n  var STYLE_IDS = [\"clean\", \"classic\", \"opto\", \"vocal\", \"bus\", \"punch\", \"varimu\", \"pump\", \"upward\"];\n  var n = (min, max, def, unit) => ({ min, max, default: def, unit });\n  var PARAM_SPECS = {\n    threshold: n(-60, 12, -24, \"dB\"),\n    ratio: n(1, 100, 3, \":1\"),\n    knee: n(0, 30, 8, \"dB\"),\n    attack: n(0.1, 250, 10, \"ms\"),\n    release: n(0.1, 2500, 120, \"ms\"),\n    attackNote: { min: 0, max: ATTACK_NOTES.length - 1, default: DEFAULT_ATTACK_NOTE, unit: \"\", options: ATTACK_NOTES.map((_, i) => i) },\n    // Attack as a note value (used with Tempo Sync)\n    releaseNote: { min: 0, max: NOTES.length - 1, default: DEFAULT_NOTE, unit: \"\", options: NOTES.map((_, i) => i) },\n    // Release as a note value (used with Tempo Sync)\n    bpm: n(20, 300, 120, \"BPM\"),\n    // the project tempo, given by the host (in this demo: the BPM field)\n    hold: n(0, 500, 0, \"ms\"),\n    range: n(0, 60, 60, \"dB\"),\n    lookahead: n(0, 10, 0, \"ms\"),\n    mix: n(0, 100, 100, \"%\"),\n    gain: n(-24, 24, 0, \"dB\"),\n    sidechainHpf: n(20, 2e4, 20, \"Hz\"),\n    scHpfSlope: { min: 6, max: 48, default: 12, unit: \"dB/oct\", options: [6, 12, 24, 48] },\n    scLevel: n(-24, 24, 0, \"dB\"),\n    scLpf: n(20, 2e4, 2e4, \"Hz\"),\n    scLpfSlope: { min: 6, max: 48, default: 12, unit: \"dB/oct\", options: [6, 12, 24, 48] },\n    scBandFreq: n(60, 12e3, 1e3, \"Hz\"),\n    scBandGain: n(-12, 12, 0, \"dB\"),\n    scBandQ: n(0.3, 8, 1, \"\"),\n    upAmount: n(1, 3, 1, \":1\"),\n    upWindow: n(0, 30, 12, \"dB\"),\n    upMaxBoost: n(0, 24, 12, \"dB\"),\n    upFloor: n(-90, -6, -60, \"dB\"),\n    oversampling: { min: 1, max: 8, default: 1, unit: \"x\", options: [1, 2, 4, 8] },\n    tempoSync: { default: false },\n    // Release in note values of the project tempo\n    lowLatency: { default: false },\n    // interface only: 30 fps graphics instead of 60\n    autoGain: { default: true },\n    autoRelease: { default: false },\n    autoThreshold: { default: false },\n    autoAttack: { default: false },\n    scOn: { default: true },\n    // Side Chain switch: off = the detector hears the plain main input (no filters, no key)\n    scListen: { default: false },\n    unity: { default: false },\n    // Unity Gain (1:1): the makeup that keeps the input's loudness, so only the effect of the compression is heard\n    scExternal: { default: false },\n    // the detector listens to a separate key input instead of the main input\n    upward: { default: false },\n    bypass: { default: false },\n    loudnessMatch: { default: false },\n    // when bypassed, trim the dry signal to the compressed loudness\n    style: { default: \"clean\" }\n  };\n  function defaults() {\n    const d = {};\n    for (const [k, s] of Object.entries(PARAM_SPECS)) d[k] = s.default;\n    return d;\n  }\n  function sanitize(partial = {}) {\n    const out = defaults();\n    for (const [k, v] of Object.entries(partial)) {\n      const s = PARAM_SPECS[k];\n      if (!s) continue;\n      if (s.options) {\n        out[k] = Number.isFinite(v) ? s.options.reduce((a, o) => Math.abs(o - v) < Math.abs(a - v) ? o : a) : s.default;\n      } else if (typeof s.default === \"number\") {\n        out[k] = Number.isFinite(v) ? clamp(v, s.min, s.max) : s.default;\n      } else if (typeof s.default === \"boolean\") {\n        out[k] = Boolean(v);\n      } else if (k === \"style\") {\n        out[k] = STYLE_IDS.includes(v) ? v : s.default;\n      }\n    }\n    return out;\n  }\n\n  // dsp/styles.js\n  var S = (label, o) => ({\n    label,\n    detector: \"peak\",\n    attackScale: 1,\n    releaseScale: 1,\n    releaseShape: \"fixed\",\n    relMul: [1, 1],\n    kneeBias: 0,\n    varimu: 0,\n    saturation: 0,\n    upwardDefault: false,\n    ...o\n  });\n  var STYLES = {\n    clean: S(\"Clean\", {}),\n    classic: S(\"Classic\", { detector: \"mix\", attackScale: 0.6, kneeBias: -4 }),\n    opto: S(\"Opto\", { detector: \"rms\", attackScale: 2.5, kneeBias: 8, releaseShape: \"twoStage\", relMul: [0.2, 4] }),\n    vocal: S(\"Vocal\", { detector: \"rms\", kneeBias: 4, releaseShape: \"twoStage\", relMul: [0.3, 2] }),\n    bus: S(\"Bus\", { detector: \"rms\", attackScale: 2, kneeBias: 6 }),\n    punch: S(\"Punch\", { attackScale: 3, releaseScale: 0.5, kneeBias: -2 }),\n    varimu: S(\"Vari-Mu\", { detector: \"rms\", attackScale: 2, kneeBias: 6, varimu: 0.5, saturation: 0.3 }),\n    pump: S(\"Pump\", { attackScale: 0.5, releaseScale: 0.25, kneeBias: -4 }),\n    upward: S(\"Upward\", { detector: \"rms\", attackScale: 1.5, kneeBias: 4, releaseShape: \"twoStage\", relMul: [0.5, 3], upwardDefault: true })\n  };\n  if (Object.keys(STYLES).join() !== STYLE_IDS.join()) throw new Error(\"STYLES and STYLE_IDS out of sync\");\n\n  // dsp/gain.js\n  var FLOOR_FADE_DB = 10;\n  function downwardDb(levelDb, p) {\n    const T = p.threshold, W = p.knee, R = p.ratio;\n    const d = levelDb - T;\n    let gain;\n    if (2 * d < -W) gain = 0;\n    else if (W > 0 && 2 * Math.abs(d) <= W) {\n      const k = d + W / 2;\n      gain = (1 / R - 1) * k * k / (2 * W);\n    } else gain = d / R - d;\n    return Math.max(gain, -p.range);\n  }\n  function upwardDb(levelDb, p) {\n    const Tup = p.threshold - p.upWindow, W = p.knee, k = 1 - 1 / p.upAmount;\n    const d = Tup - levelDb;\n    let boost;\n    if (2 * d < -W) boost = 0;\n    else if (W > 0 && 2 * Math.abs(d) <= W) {\n      const e = d + W / 2;\n      boost = k * e * e / (2 * W);\n    } else boost = d * k;\n    boost = Math.min(boost, p.upMaxBoost);\n    const f = clamp((levelDb - p.upFloor) / FLOOR_FADE_DB, 0, 1);\n    return boost * f * f * (3 - 2 * f);\n  }\n  function computeGainDb(levelDb, p) {\n    const g = downwardDb(levelDb, p);\n    return p.upward ? g + upwardDb(levelDb, p) : g;\n  }\n\n  // dsp/filters.js\n  var Biquad = class {\n    constructor() {\n      this.z1 = 0;\n      this.z2 = 0;\n      this.b0 = 1;\n      this.b1 = 0;\n      this.b2 = 0;\n      this.a1 = 0;\n      this.a2 = 0;\n    }\n    _set(b0, b1, b2, a0, a1, a2) {\n      this.b0 = b0 / a0;\n      this.b1 = b1 / a0;\n      this.b2 = b2 / a0;\n      this.a1 = a1 / a0;\n      this.a2 = a2 / a0;\n    }\n    setHighpass1(f, sr) {\n      const k = Math.tan(Math.PI * Math.min(f, 0.45 * sr) / sr);\n      this._set(1 / (1 + k), -1 / (1 + k), 0, 1, (k - 1) / (1 + k), 0);\n    }\n    setLowpass1(f, sr) {\n      const k = Math.tan(Math.PI * Math.min(f, 0.45 * sr) / sr);\n      this._set(k / (1 + k), k / (1 + k), 0, 1, (k - 1) / (1 + k), 0);\n    }\n    setHighpass(f, sr, q = Math.SQRT1_2) {\n      f = Math.min(f, 0.45 * sr);\n      const w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);\n      this._set((1 + cs) / 2, -(1 + cs), (1 + cs) / 2, 1 + al, -2 * cs, 1 - al);\n    }\n    setLowpass(f, sr, q = Math.SQRT1_2) {\n      f = Math.min(f, 0.45 * sr);\n      const w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);\n      this._set((1 - cs) / 2, 1 - cs, (1 - cs) / 2, 1 + al, -2 * cs, 1 - al);\n    }\n    setPeaking(f, gainDb, q, sr) {\n      f = Math.min(f, 0.45 * sr);\n      const A = Math.pow(10, gainDb / 40), w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);\n      this._set(1 + al * A, -2 * cs, 1 - al * A, 1 + al / A, -2 * cs, 1 - al / A);\n    }\n    // Magnitude response in dB at frequency f (used by the UI to draw the filter curve with the exact DSP coefficients).\n    magnitudeDb(f, sr) {\n      const w = 2 * Math.PI * f / sr, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);\n      const nr = this.b0 + this.b1 * c1 + this.b2 * c2, ni = -(this.b1 * s1 + this.b2 * s2);\n      const dr = 1 + this.a1 * c1 + this.a2 * c2, di = -(this.a1 * s1 + this.a2 * s2);\n      return 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di) + 1e-30);\n    }\n    process(x) {\n      const y = this.b0 * x + this.z1;\n      this.z1 = this.b1 * x - this.a1 * y + this.z2;\n      this.z2 = this.b2 * x - this.a2 * y;\n      if (!(Math.abs(this.z1) < 1e15 && Math.abs(this.z2) < 1e15)) {\n        this.z1 = 0;\n        this.z2 = 0;\n        return 0;\n      }\n      if (Math.abs(this.z1) < 1e-20) this.z1 = 0;\n      if (Math.abs(this.z2) < 1e-20) this.z2 = 0;\n      return y;\n    }\n  };\n  var SLOPE_STAGES = { 6: null, 12: [Math.SQRT1_2], 24: [0.5412, 1.3066], 48: [0.5098, 0.6013, 0.9, 2.5629] };\n  var MAX_STAGES = 4;\n  var makeStages = () => Array.from({ length: MAX_STAGES }, () => new Biquad());\n  function configureCut(stages, kind, f, sr, slope) {\n    const qs = SLOPE_STAGES[slope];\n    if (qs === null) {\n      kind === \"hp\" ? stages[0].setHighpass1(f, sr) : stages[0].setLowpass1(f, sr);\n      return 1;\n    }\n    qs.forEach((q, k) => kind === \"hp\" ? stages[k].setHighpass(f, sr, q) : stages[k].setLowpass(f, sr, q));\n    return qs.length;\n  }\n\n  // dsp/compressor.js\n  var AUTO_TAU_S = 2;\n  var AUTO_BLOCK = 64;\n  var AUTO_REL_DENSITY_S = 0.7;\n  var AUTO_THR_TAU_S = 0.6;\n  var AUTO_THR_SMOOTH_S = 0.8;\n  var AUTO_REL_MIN_MS = 30;\n  var AUTO_REL_MAX_MS = 800;\n  var AUTO_FAST_S = 2;\n  var AUTO_FAST_TAU_S = 0.1;\n  var AUTO_WATCH = [\"threshold\", \"ratio\", \"knee\", \"range\", \"style\", \"upward\", \"upAmount\", \"upWindow\", \"upMaxBoost\", \"upFloor\", \"autoGain\", \"autoThreshold\", \"unity\"];\n  var LA_FADE_S = 0.08;\n  var UPWARD_MIN_LOOKAHEAD_MS = 2;\n  var RETRACT_MS = 0.5;\n  var AUTO_THR_REF_DB = -18;\n  var AUTO_THR_FREEZE_DB = -80;\n  var AUTO_THR_PAUSE_DB = 24;\n  var PEAK_RELEASE_MS = 10;\n  var coef = (ms, sr) => Math.exp(-1 / Math.max(ms * 1e-3 * sr, 1e-3));\n  var softLimit = (x) => {\n    const a = Math.abs(x);\n    return a <= 0.5 ? x : Math.sign(x) * (0.5 + 0.5 * Math.tanh((a - 0.5) / 0.5));\n  };\n  var Compressor = class {\n    constructor(sampleRate2) {\n      this.sr = sampleRate2;\n      this.p = sanitize({});\n      this.cfg = STYLES.clean;\n      this.pe = { ...this.p };\n      this.size = Math.ceil(0.01 * sampleRate2) + 4;\n      this.dly = [new Float32Array(this.size), new Float32Array(this.size)];\n      this.w = 0;\n      this.hp = [makeStages(), makeStages()];\n      this.hpN = 1;\n      this.hpSlope = 12;\n      this.lp = [makeStages(), makeStages()];\n      this.lpN = 1;\n      this.lpSlope = 12;\n      this.bp = [new Biquad(), new Biquad()];\n      this.ms = [0, 0];\n      this.pk = [0, 0];\n      this.gF = [0, 0];\n      this.gS = [0, 0];\n      this.hold = [0, 0];\n      this.thrOffset = 0;\n      this.effThr = -24;\n      this.lis = 0;\n      this.dens = 0;\n      this.autoRelMs = 120;\n      this.curAttMs = 10;\n      this.ovr = [0, 0];\n      this.attShow = Math.log(10);\n      this.gIn = 0;\n      this.gOut = 0;\n      this.autoFast = Math.round(AUTO_FAST_S * sampleRate2);\n      this.byp = 0;\n      this.trim = 1;\n      this.autoOffset = 0;\n      this.pIn = 0;\n      this.pOut = 0;\n      this.autoCount = 0;\n      this.lv = new Float64Array(2);\n      this.lin = new Float64Array(2);\n      this.laA = 0;\n      this.laB = 0;\n      this.laFade = 1;\n      this.started = false;\n      this.trimTarget = 1;\n      this.inPeak = 0;\n      this.outPeak = 0;\n      this.gainDbNow = 0;\n      this._derive();\n    }\n    get autoGainDb() {\n      return this.p.autoGain ? this.autoOffset : 0;\n    }\n    setParams(partial) {\n      const prev = this.p;\n      this.p = sanitize({ ...this.p, ...partial });\n      if (AUTO_WATCH.some((k) => prev[k] !== this.p[k])) this.autoFast = Math.round(AUTO_FAST_S * this.sr);\n      this.cfg = STYLES[this.p.style];\n      this._derive();\n    }\n    _derive() {\n      const { sr, p, cfg } = this;\n      const minLa = p.upward ? Math.round(UPWARD_MIN_LOOKAHEAD_MS * 1e-3 * sr) : 0;\n      this.laSamples = Math.max(Math.round(p.lookahead * 1e-3 * sr), minLa);\n      if (!this.started) {\n        this.laA = this.laB = this.laSamples;\n        this.laFade = 1;\n      }\n      this.attKnobMs = p.tempoSync && !p.autoAttack ? noteToMs(p.attackNote, p.bpm, ATTACK_NOTES, 250) : p.attack;\n      this.retractC = coef(Math.min(this.attKnobMs * cfg.attackScale, RETRACT_MS), sr);\n      this.attMs = this.attKnobMs * cfg.attackScale;\n      this.attC = coef(this.attMs, sr);\n      this.relMul = cfg.releaseShape === \"twoStage\" ? cfg.relMul : p.autoRelease ? [0.25, 2.5] : [1, 1];\n      this.relKnobMs = p.tempoSync ? noteToMs(p.releaseNote, p.bpm) : p.release;\n      this._setRelease(p.autoRelease ? this.autoRelMs : this.relKnobMs);\n      this.densC = 1 - Math.exp(-1 / (AUTO_REL_DENSITY_S * sr));\n      this.ovC = 1 - Math.exp(-1 / (0.12 * sr));\n      this.attShowC = 1 - Math.exp(-1 / (0.25 * sr));\n      this.tC = Math.exp(-1 / (AUTO_THR_TAU_S * sr));\n      this.tCFast = Math.exp(-1 / (0.3 * sr));\n      this.thrStep = 1 - Math.exp(-AUTO_BLOCK / (AUTO_THR_SMOOTH_S * sr));\n      this.thrStepFast = 1 - Math.exp(-AUTO_BLOCK / (0.15 * sr));\n      if (!p.autoThreshold) this.thrOffset = 0;\n      Object.assign(this.pe, p, { knee: clamp(p.knee + cfg.kneeBias, 0, 30) });\n      this.effThr = this.pe.threshold = clamp(p.threshold + this.thrOffset, -60, 12);\n      this.holdSamples = Math.round(p.hold * 1e-3 * sr);\n      this.scLin = dbToLin(p.scLevel);\n      const wasHp = this.hpfOn, wasLp = this.lpfOn, wasBand = this.bandOn;\n      this.hpfOn = p.scOn && p.sidechainHpf > 20.5;\n      if (this.hpfOn) {\n        for (let c = 0; c < 2; c++) this.hpN = configureCut(this.hp[c], \"hp\", p.sidechainHpf, sr, p.scHpfSlope);\n        if (!wasHp || p.scHpfSlope !== this.hpSlope) for (const ch of this.hp) for (const st of ch) st.z1 = st.z2 = 0;\n      }\n      this.hpSlope = p.scHpfSlope;\n      this.lpfOn = p.scOn && p.scLpf < 19999;\n      if (this.lpfOn) {\n        for (let c = 0; c < 2; c++) this.lpN = configureCut(this.lp[c], \"lp\", p.scLpf, sr, p.scLpfSlope);\n        if (!wasLp || p.scLpfSlope !== this.lpSlope) for (const ch of this.lp) for (const st of ch) st.z1 = st.z2 = 0;\n      }\n      this.lpSlope = p.scLpfSlope;\n      this.bandOn = p.scOn && Math.abs(p.scBandGain) > 0.05;\n      if (this.bandOn) for (const f of this.bp) {\n        f.setPeaking(p.scBandFreq, p.scBandGain, p.scBandQ, sr);\n        if (!wasBand) f.z1 = f.z2 = 0;\n      }\n      if (!this.started) this.lis = p.scListen ? 1 : 0;\n      this.rmsC = coef(10, sr);\n      this.pkC = coef(PEAK_RELEASE_MS, sr);\n      this.peakDecay = coef(300, sr);\n      this.bypStep = 1 / (5e-3 * sr);\n      this.laStep = 1 / (LA_FADE_S * sr);\n      this.autoStep = 1 - Math.exp(-AUTO_BLOCK / (0.5 * sr));\n      this.pC = Math.exp(-1 / (AUTO_TAU_S * sr));\n      this.pCFast = Math.exp(-1 / (AUTO_FAST_TAU_S * sr));\n      this.autoStepFast = 1 - Math.exp(-AUTO_BLOCK / (0.05 * sr));\n    }\n    get latencySamples() {\n      return this.laSamples;\n    }\n    // relMs is in knob terms; the style scales it. Fast and slow stage use the style's (or Auto Release's) multipliers.\n    _setRelease(relMs) {\n      const rel = relMs * this.cfg.releaseScale, mul = this.relMul;\n      this.relFastC = coef(rel * mul[0], this.sr);\n      this.relSlowC = coef(rel * mul[1], this.sr);\n    }\n    // One smoothing stage in the dB domain. Falling gain = attack (or fast retraction of a boost); rising = release unless held.\n    _stage(g, target, relC, holding) {\n      if (target < g) return target + (g - target) * (g > 0 ? this.retractC : this.attC);\n      return holding ? g : target + (g - target) * relC;\n    }\n    get meters() {\n      const { p } = this;\n      return {\n        gainDb: this.gainDbNow,\n        inPeakDb: linToDb(this.inPeak),\n        outPeakDb: linToDb(this.outPeak),\n        thresholdDb: this.effThr,\n        autoAttackMs: p.autoAttack ? this.curAttMs : this.attKnobMs,\n        autoReleaseMs: p.autoRelease ? this.autoRelMs : this.relKnobMs\n      };\n    }\n    // keyL/keyR: the external sidechain (key) input; used only when the External switch is on (a missing key counts as silence).\n    process(inL, inR, outL, outR, n2, keyL = null, keyR = null) {\n      const { p, cfg, size, dly, laSamples: la } = this;\n      const det = cfg.detector, useRms = det !== \"peak\", pe = this.pe;\n      const wet = p.mix / 100, bypT = p.bypass ? 1 : 0, ext = p.scOn && p.scExternal;\n      const gF = this.gF, gS = this.gS, hold = this.hold, lv = this.lv, lin0 = this.lin;\n      this.started = true;\n      for (let i = 0; i < n2; i++) {\n        const x0 = inL[i], x1 = inR[i];\n        dly[0][this.w] = x0;\n        dly[1][this.w] = x1;\n        if (this.laFade >= 1 && this.laB !== la) {\n          this.laB = la;\n          this.laFade = 0;\n        }\n        const rA = (this.w - this.laA + size) % size;\n        let d0 = dly[0][rA], d1 = dly[1][rA];\n        if (this.laFade < 1) {\n          this.laFade = Math.min(1, this.laFade + this.laStep);\n          const rB = (this.w - this.laB + size) % size, f = this.laFade;\n          d0 += (dly[0][rB] - d0) * f;\n          d1 += (dly[1][rB] - d1) * f;\n          if (f >= 1) this.laA = this.laB;\n        }\n        this.w = (this.w + 1) % size;\n        const k0 = ext ? keyL ? keyL[i] : 0 : x0, k1 = ext ? keyR ? keyR[i] : 0 : x1;\n        let s0 = k0, s1 = k1;\n        if (this.hpfOn) for (let k = 0; k < this.hpN; k++) {\n          s0 = this.hp[0][k].process(s0);\n          s1 = this.hp[1][k].process(s1);\n        }\n        if (this.lpfOn) for (let k = 0; k < this.lpN; k++) {\n          s0 = this.lp[0][k].process(s0);\n          s1 = this.lp[1][k].process(s1);\n        }\n        if (this.bandOn) {\n          s0 = this.bp[0].process(s0);\n          s1 = this.bp[1].process(s1);\n        }\n        this.pk[0] = Math.max(Math.abs(s0), this.pk[0] * this.pkC);\n        this.pk[1] = Math.max(Math.abs(s1), this.pk[1] * this.pkC);\n        let l0 = this.pk[0], l1 = this.pk[1];\n        if (useRms) {\n          this.ms[0] = this.ms[0] * this.rmsC + s0 * s0 * (1 - this.rmsC);\n          this.ms[1] = this.ms[1] * this.rmsC + s1 * s1 * (1 - this.rmsC);\n          const r0 = Math.sqrt(this.ms[0]) * Math.SQRT2, r1 = Math.sqrt(this.ms[1]) * Math.SQRT2;\n          if (det === \"rms\") {\n            l0 = r0;\n            l1 = r1;\n          } else {\n            l0 = 0.5 * (l0 + r0);\n            l1 = 0.5 * (l1 + r1);\n          }\n        }\n        const mx = Math.max(l0, l1);\n        lv[0] = mx;\n        lv[1] = mx;\n        let gSum = 0;\n        for (let c = 0; c < 2; c++) {\n          if (cfg.varimu) pe.ratio = p.ratio * (1 + cfg.varimu * clamp(-(0.5 * (gF[c] + gS[c])) / 12, 0, 2));\n          const lvDb = linToDb(lv[c]);\n          const target = computeGainDb(lvDb, pe);\n          if (p.autoAttack) {\n            const over = Math.max(0, lvDb - pe.threshold);\n            let ov = this.ovr[c];\n            ov = over > ov ? over : ov + (over - ov) * this.ovC;\n            this.ovr[c] = ov;\n            const am = Math.max(0.1, this.attMs * Math.pow(10, -ov / 20));\n            this.attC = coef(am, this.sr);\n            if (c === 0) {\n              this.attShow += (Math.log(am / cfg.attackScale) - this.attShow) * this.attShowC;\n              this.curAttMs = Math.exp(this.attShow);\n            }\n          }\n          const gf = gF[c], attacking = target < gf;\n          if (attacking) hold[c] = this.holdSamples;\n          const holding = !attacking && hold[c] > 0;\n          if (holding) hold[c]--;\n          gF[c] = this._stage(gf, target, this.relFastC, holding);\n          gS[c] = this._stage(gS[c], target, this.relSlowC, holding);\n          const g = 0.5 * (gF[c] + gS[c]);\n          gSum += g;\n          lin0[c] = dbToLin(g);\n        }\n        this.gainDbNow = gSum / 2;\n        this.dens += (clamp(-this.gainDbNow / 6, 0, 1) - this.dens) * this.densC;\n        const w0 = d0 * lin0[0], w1 = d1 * lin0[1];\n        const fast = this.autoFast > 0;\n        if (fast) this.autoFast--;\n        const tc = fast ? this.tCFast : this.tC;\n        this.pIn = this.pIn * tc + (k0 * k0 + k1 * k1) * (1 - tc);\n        const gc = fast ? this.pCFast : this.pC;\n        this.gIn = this.gIn * gc + (x0 * x0 + x1 * x1) * (1 - gc);\n        this.gOut = this.gOut * gc + (w0 * w0 + w1 * w1) * (1 - gc);\n        if (++this.autoCount >= AUTO_BLOCK) {\n          this.autoCount = 0;\n          if (this.gIn > 1e-12 && this.gOut > 1e-12) {\n            const t = clamp(10 * Math.log10(this.gIn / this.gOut), -24, 24);\n            this.autoOffset += (t - this.autoOffset) * (this.autoFast > 0 ? this.autoStepFast : this.autoStep);\n          }\n          if (p.autoRelease) {\n            this.autoRelMs = AUTO_REL_MIN_MS * Math.pow(AUTO_REL_MAX_MS / AUTO_REL_MIN_MS, this.dens);\n            this._setRelease(this.autoRelMs);\n          }\n          if (p.autoThreshold) {\n            const levelDb = 10 * Math.log10(this.pIn * 0.5 + 1e-30);\n            const fastDb = linToDb(this.inPeak);\n            if (levelDb > AUTO_THR_FREEZE_DB && fastDb > levelDb - AUTO_THR_PAUSE_DB) this.thrOffset += (levelDb - AUTO_THR_REF_DB - this.thrOffset) * (fast ? this.thrStepFast : this.thrStep);\n            this.thrOffset = clamp(this.thrOffset, -60 - p.threshold, 12 - p.threshold);\n            this.effThr = pe.threshold = clamp(p.threshold + this.thrOffset, -60, 12);\n          }\n          const delta = (p.unity ? this.autoOffset : p.gain + (p.autoGain ? this.autoOffset : 0)) - this.autoOffset;\n          this.trimTarget = p.loudnessMatch ? dbToLin(delta) : 1;\n        }\n        this.trim += (this.trimTarget - this.trim) * 5e-4;\n        const mk = dbToLin(p.unity ? this.autoOffset : p.gain + (p.autoGain ? this.autoOffset : 0));\n        let v0 = w0 * mk, v1 = w1 * mk;\n        if (cfg.saturation) {\n          const a = cfg.saturation;\n          v0 = (1 - a) * v0 + a * Math.tanh(v0);\n          v1 = (1 - a) * v1 + a * Math.tanh(v1);\n        }\n        const o0 = d0 * (1 - wet) + v0 * wet;\n        const o1 = d1 * (1 - wet) + v1 * wet;\n        if (this.byp < bypT) this.byp = Math.min(bypT, this.byp + this.bypStep);\n        else if (this.byp > bypT) this.byp = Math.max(bypT, this.byp - this.bypStep);\n        const b = this.byp;\n        let y0 = d0 * this.trim * b + o0 * (1 - b), y1 = d1 * this.trim * b + o1 * (1 - b);\n        const lisT = p.scListen ? 1 : 0;\n        if (this.lis < lisT) this.lis = Math.min(lisT, this.lis + this.bypStep);\n        else if (this.lis > lisT) this.lis = Math.max(lisT, this.lis - this.bypStep);\n        if (this.lis > 0) {\n          const l = this.lis;\n          y0 = y0 * (1 - l) + softLimit(s0 * this.scLin) * l;\n          y1 = y1 * (1 - l) + softLimit(s1 * this.scLin) * l;\n        }\n        this.inPeak = Math.max(Math.abs(x0), Math.abs(x1), this.inPeak * this.peakDecay);\n        this.outPeak = Math.max(Math.abs(y0), Math.abs(y1), this.outPeak * this.peakDecay);\n        outL[i] = y0;\n        outR[i] = y1;\n      }\n    }\n  };\n\n  // dsp/oversample.js\n  var STAGE_K = [12, 4, 4];\n  var KAISER_BETA = 8;\n  var sinc = (x) => x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);\n  var bessel0 = (x) => {\n    let s = 1, t = 1;\n    for (let k = 1; k < 40; k++) {\n      t *= x / (2 * k) * (x / (2 * k));\n      s += t;\n    }\n    return s;\n  };\n  function halfband(K) {\n    const L = 4 * K + 1, c = 2 * K, h = new Float64Array(L), i0 = bessel0(KAISER_BETA);\n    for (let j = 0; j < L; j++) {\n      const r = (j - c) / c;\n      h[j] = 0.5 * sinc((j - c) / 2) * (bessel0(KAISER_BETA * Math.sqrt(Math.max(0, 1 - r * r))) / i0);\n    }\n    return h;\n  }\n  var osLatency = (factor) => {\n    let lat = 0;\n    for (let s = 0, f = 1; f < factor; s++, f *= 2) lat += 2 * STAGE_K[s] / f;\n    return lat;\n  };\n  var Up2 = class {\n    constructor(K) {\n      this.K = K;\n      this.n = 2 * K;\n      this.hist = new Float64Array(this.n);\n      this.pos = 0;\n      const h = halfband(K);\n      this.g = new Float64Array(this.n);\n      for (let k = 0; k < this.n; k++) this.g[k] = 2 * h[2 * k + 1];\n    }\n    process(x, out, n2) {\n      const { hist, g, K } = this, N = this.n;\n      let pos = this.pos;\n      for (let i = 0; i < n2; i++) {\n        hist[pos] = x[i];\n        let s = 0;\n        for (let k = 0, p = pos; k < N; k++, p = p === 0 ? N - 1 : p - 1) s += g[k] * hist[p];\n        out[2 * i] = hist[(pos - K + N) % N];\n        out[2 * i + 1] = s;\n        pos = pos === N - 1 ? 0 : pos + 1;\n      }\n      this.pos = pos;\n    }\n  };\n  var Down2 = class {\n    constructor(K) {\n      this.K = K;\n      this.L = 4 * K + 1;\n      this.c = 2 * K;\n      this.hist = new Float64Array(this.L);\n      this.pos = 0;\n      this.h = halfband(K);\n    }\n    push(v) {\n      this.hist[this.pos] = v;\n      this.pos = this.pos === this.L - 1 ? 0 : this.pos + 1;\n    }\n    at(j) {\n      return this.hist[(this.pos - 1 - j + this.L * 2) % this.L];\n    }\n    // j samples back from the newest\n    process(w, out, n2) {\n      const { h, L, c } = this;\n      for (let i = 0; i < n2; i++) {\n        this.push(w[2 * i]);\n        let s = h[c] * this.at(c);\n        for (let j = 1; j < L - 1; j += 2) s += h[j] * this.at(j);\n        out[i] = s;\n        this.push(w[2 * i + 1]);\n      }\n    }\n  };\n  var Oversampler = class {\n    constructor(factor) {\n      this.factor = factor;\n      this.ups = [];\n      this.downs = [];\n      this.tmp = [];\n      for (let s = 0, f = 1; f < factor; s++, f *= 2) {\n        this.ups.push(new Up2(STAGE_K[s]));\n        this.downs.push(new Down2(STAGE_K[s]));\n        this.tmp.push(new Float32Array(0));\n      }\n    }\n    _buf(s, len) {\n      if (this.tmp[s].length < len) this.tmp[s] = new Float32Array(len);\n      return this.tmp[s];\n    }\n    up(x, out, n2) {\n      let cur = x, len = n2;\n      for (let s = 0; s < this.ups.length; s++) {\n        const dst = s === this.ups.length - 1 ? out : this._buf(s, len * 2);\n        this.ups[s].process(cur, dst, len);\n        cur = dst;\n        len *= 2;\n      }\n    }\n    down(inp, out, n2) {\n      let cur = inp, len = n2 * this.factor;\n      for (let s = this.downs.length - 1; s >= 0; s--) {\n        len /= 2;\n        const dst = s === 0 ? out : this._buf(s, len);\n        this.downs[s].process(cur, dst, len);\n        cur = dst;\n      }\n    }\n  };\n  var OversampledCompressor = class {\n    constructor(sampleRate2) {\n      this.sr = sampleRate2;\n      this.p = sanitize({});\n      this.factor = 1;\n      this.core = new Compressor(sampleRate2);\n      this.os = null;\n      this.buf = Array.from({ length: 6 }, () => new Float32Array(0));\n    }\n    setParams(partial) {\n      this.p = sanitize({ ...this.p, ...partial });\n      const f = this.p.oversampling;\n      if (f !== this.factor) {\n        const old = this.core, core = new Compressor(this.sr * f);\n        core.setParams(this.p);\n        for (const k of [\"byp\", \"lis\", \"thrOffset\", \"autoOffset\", \"pIn\", \"pOut\", \"gIn\", \"gOut\", \"autoFast\", \"dens\", \"autoRelMs\", \"curAttMs\", \"trim\", \"trimTarget\", \"inPeak\", \"outPeak\", \"gainDbNow\"]) core[k] = old[k];\n        core.gF = [...old.gF];\n        core.gS = [...old.gS];\n        this.core = core;\n        this.factor = f;\n        this.os = f > 1 ? [new Oversampler(f), new Oversampler(f), new Oversampler(f), new Oversampler(f)] : null;\n      } else this.core.setParams(this.p);\n    }\n    get latencySamples() {\n      return Math.round(this.core.latencySamples / this.factor) + osLatency(this.factor);\n    }\n    get meters() {\n      return this.core.meters;\n    }\n    get autoGainDb() {\n      return this.core.autoGainDb;\n    }\n    process(inL, inR, outL, outR, n2, keyL = null, keyR = null) {\n      if (this.factor === 1) {\n        this.core.process(inL, inR, outL, outR, n2, keyL, keyR);\n        return;\n      }\n      const m = n2 * this.factor, b = this.buf, ext = this.p.scOn && this.p.scExternal && keyL;\n      for (let i = 0; i < 6; i++) if (b[i].length < m) b[i] = new Float32Array(m);\n      this.os[0].up(inL, b[0], n2);\n      this.os[1].up(inR, b[1], n2);\n      if (ext) {\n        this.os[2].up(keyL, b[4], n2);\n        this.os[3].up(keyR || keyL, b[5], n2);\n      }\n      this.core.process(b[0], b[1], b[2], b[3], m, ext ? b[4] : null, ext ? b[5] : null);\n      this.os[0].down(b[2], outL, n2);\n      this.os[1].down(b[3], outR, n2);\n    }\n  };\n\n  // dsp/runner.js\n  var REPORT_S = 0.016;\n  var db = (v) => v <= 1e-6 ? -120 : 20 * Math.log10(v);\n  var Runner = class {\n    constructor(sampleRate2, post) {\n      this.sr = sampleRate2;\n      this.post = post;\n      this.comp = new OversampledCompressor(sampleRate2);\n      this.scratch = new Float32Array(128);\n      this.frames = 0;\n      this.blockIn = 0;\n      this.blockOut = 0;\n    }\n    setParams(p) {\n      this.comp.setParams(p);\n    }\n    // oR may be null for a mono output; a scratch buffer is used then.\n    // kL/kR: the key (external sidechain) channels when the host provides them\n    process(L, R, oL, oR, n2, kL = null, kR = null) {\n      if (!oR) {\n        if (this.scratch.length < n2) this.scratch = new Float32Array(n2);\n        oR = this.scratch;\n      }\n      this.comp.process(L, R, oL, oR, n2, kL, kR);\n      for (let i = 0; i < n2; i++) {\n        const a = Math.max(Math.abs(L[i]), Math.abs(R[i])), b = Math.max(Math.abs(oL[i]), Math.abs(oR[i]));\n        if (a > this.blockIn) this.blockIn = a;\n        if (b > this.blockOut) this.blockOut = b;\n      }\n      this.frames += n2;\n      if (this.frames >= REPORT_S * this.sr) {\n        const m = this.comp.meters;\n        this.post({ type: \"meters\", gainDb: m.gainDb, inPeakDb: m.inPeakDb, outPeakDb: m.outPeakDb, thresholdDb: m.thresholdDb, latencySamples: this.comp.latencySamples, autoGainDb: this.comp.autoGainDb, autoAttackMs: m.autoAttackMs, autoReleaseMs: m.autoReleaseMs, inDb: db(this.blockIn), outDb: db(this.blockOut) });\n        this.frames = 0;\n        this.blockIn = 0;\n        this.blockOut = 0;\n      }\n    }\n  };\n\n  // worklet.js\n  var PurpleComp = class extends AudioWorkletProcessor {\n    constructor() {\n      super();\n      this.runner = new Runner(sampleRate, (m) => this.port.postMessage(m));\n      this.port.onmessage = (e) => {\n        if (e.data && e.data.type === \"params\") this.runner.setParams(e.data.params);\n      };\n    }\n    process(inputs, outputs) {\n      const inp = inputs[0], out = outputs[0];\n      if (!out || !out.length) return true;\n      if (!inp || !inp.length) {\n        for (const ch of out) ch.fill(0);\n        return true;\n      }\n      this.runner.process(inp[0], inp[1] || inp[0], out[0], out[1] || null, out[0].length, inp[2] || null, inp[3] || inp[2] || null);\n      return true;\n    }\n  };\n  registerProcessor(\"purple-comp\", PurpleComp);\n})();\n";</script>
+<script>(() => {
+  // dsp/util.js
+  var dbToLin = (db2) => Math.pow(10, db2 / 20);
+  var linToDb = (lin) => lin <= 1e-6 ? -120 : 20 * Math.log10(lin);
+  var clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;
+
+  // dsp/tempo.js
+  var NOTES = [
+    { label: "1/32", beats: 0.125 },
+    { label: "1/16T", beats: 1 / 6 },
+    { label: "1/16", beats: 0.25 },
+    { label: "1/8T", beats: 1 / 3 },
+    { label: "1/8", beats: 0.5 },
+    { label: "1/4T", beats: 2 / 3 },
+    { label: "1/8D", beats: 0.75 },
+    { label: "1/4", beats: 1 },
+    { label: "1/2T", beats: 4 / 3 },
+    { label: "1/4D", beats: 1.5 },
+    { label: "1/2", beats: 2 },
+    { label: "1/2D", beats: 3 },
+    { label: "1/1", beats: 4 }
+  ];
+  var DEFAULT_NOTE = NOTES.findIndex((n2) => n2.label === "1/8");
+  var ATTACK_NOTES = [
+    { label: "1/256", beats: 1 / 64 },
+    { label: "1/128T", beats: 1 / 48 },
+    { label: "1/128", beats: 1 / 32 },
+    { label: "1/64T", beats: 1 / 24 },
+    { label: "1/64", beats: 1 / 16 },
+    { label: "1/32T", beats: 1 / 12 },
+    { label: "1/32", beats: 1 / 8 },
+    { label: "1/16T", beats: 1 / 6 },
+    { label: "1/16", beats: 1 / 4 },
+    { label: "1/8T", beats: 1 / 3 },
+    { label: "1/8", beats: 1 / 2 }
+  ];
+  var DEFAULT_ATTACK_NOTE = ATTACK_NOTES.findIndex((n2) => n2.label === "1/128");
+  var noteToMs = (index, bpm, list = NOTES, maxMs = 2500) => Math.min(maxMs, Math.max(0.1, list[Math.max(0, Math.min(list.length - 1, Math.round(index)))].beats * 6e4 / bpm));
+
+  // dsp/params.js
+  var STYLE_IDS = ["clean", "classic", "opto", "vocal", "bus", "punch", "varimu", "pump", "upward"];
+  var n = (min, max, def, unit) => ({ min, max, default: def, unit });
+  var PARAM_SPECS = {
+    threshold: n(-60, 12, -24, "dB"),
+    ratio: n(1, 100, 3, ":1"),
+    knee: n(0, 30, 8, "dB"),
+    attack: n(0.1, 250, 10, "ms"),
+    release: n(0.1, 2500, 120, "ms"),
+    attackNote: { min: 0, max: ATTACK_NOTES.length - 1, default: DEFAULT_ATTACK_NOTE, unit: "", options: ATTACK_NOTES.map((_, i) => i) },
+    // Attack as a note value (used with Tempo Sync)
+    releaseNote: { min: 0, max: NOTES.length - 1, default: DEFAULT_NOTE, unit: "", options: NOTES.map((_, i) => i) },
+    // Release as a note value (used with Tempo Sync)
+    bpm: n(20, 300, 120, "BPM"),
+    // the project tempo, given by the host (in this demo: the BPM field)
+    hold: n(0, 500, 0, "ms"),
+    range: n(0, 60, 60, "dB"),
+    lookahead: n(0, 10, 0, "ms"),
+    mix: n(0, 100, 100, "%"),
+    gain: n(-24, 24, 0, "dB"),
+    sidechainHpf: n(20, 2e4, 20, "Hz"),
+    scHpfSlope: { min: 6, max: 48, default: 12, unit: "dB/oct", options: [6, 12, 24, 48] },
+    scLevel: n(-24, 24, 0, "dB"),
+    scLpf: n(20, 2e4, 2e4, "Hz"),
+    scLpfSlope: { min: 6, max: 48, default: 12, unit: "dB/oct", options: [6, 12, 24, 48] },
+    scBandFreq: n(60, 12e3, 1e3, "Hz"),
+    scBandGain: n(-12, 12, 0, "dB"),
+    scBandQ: n(0.3, 8, 1, ""),
+    upAmount: n(1, 3, 1, ":1"),
+    upWindow: n(0, 30, 12, "dB"),
+    upMaxBoost: n(0, 24, 12, "dB"),
+    upFloor: n(-90, -6, -60, "dB"),
+    oversampling: { min: 1, max: 8, default: 1, unit: "x", options: [1, 2, 4, 8] },
+    tempoSync: { default: false },
+    // Release in note values of the project tempo
+    lowLatency: { default: false },
+    // interface only: 30 fps graphics instead of 60
+    autoGain: { default: true },
+    autoRelease: { default: false },
+    autoThreshold: { default: false },
+    autoAttack: { default: false },
+    scOn: { default: true },
+    // Side Chain switch: off = the detector hears the plain main input (no filters, no key)
+    scListen: { default: false },
+    unity: { default: false },
+    // Unity Gain (1:1): the makeup that keeps the input's loudness, so only the effect of the compression is heard
+    scExternal: { default: false },
+    // the detector listens to a separate key input instead of the main input
+    upward: { default: false },
+    bypass: { default: false },
+    loudnessMatch: { default: false },
+    // when bypassed, trim the dry signal to the compressed loudness
+    style: { default: "clean" }
+  };
+  function defaults() {
+    const d = {};
+    for (const [k, s] of Object.entries(PARAM_SPECS)) d[k] = s.default;
+    return d;
+  }
+  function sanitize(partial = {}) {
+    const out = defaults();
+    for (const [k, v] of Object.entries(partial)) {
+      const s = PARAM_SPECS[k];
+      if (!s) continue;
+      if (s.options) {
+        out[k] = Number.isFinite(v) ? s.options.reduce((a, o) => Math.abs(o - v) < Math.abs(a - v) ? o : a) : s.default;
+      } else if (typeof s.default === "number") {
+        out[k] = Number.isFinite(v) ? clamp(v, s.min, s.max) : s.default;
+      } else if (typeof s.default === "boolean") {
+        out[k] = Boolean(v);
+      } else if (k === "style") {
+        out[k] = STYLE_IDS.includes(v) ? v : s.default;
+      }
+    }
+    return out;
+  }
+
+  // dsp/styles.js
+  var S = (label, o) => ({
+    label,
+    detector: "peak",
+    attackScale: 1,
+    releaseScale: 1,
+    releaseShape: "fixed",
+    relMul: [1, 1],
+    kneeBias: 0,
+    varimu: 0,
+    saturation: 0,
+    upwardDefault: false,
+    ...o
+  });
+  var STYLES = {
+    clean: S("Clean", {}),
+    classic: S("Classic", { detector: "mix", attackScale: 0.6, kneeBias: -4 }),
+    opto: S("Opto", { detector: "rms", attackScale: 2.5, kneeBias: 8, releaseShape: "twoStage", relMul: [0.2, 4] }),
+    vocal: S("Vocal", { detector: "rms", kneeBias: 4, releaseShape: "twoStage", relMul: [0.3, 2] }),
+    bus: S("Bus", { detector: "rms", attackScale: 2, kneeBias: 6 }),
+    punch: S("Punch", { attackScale: 3, releaseScale: 0.5, kneeBias: -2 }),
+    varimu: S("Vari-Mu", { detector: "rms", attackScale: 2, kneeBias: 6, varimu: 0.5, saturation: 0.3 }),
+    pump: S("Pump", { attackScale: 0.5, releaseScale: 0.25, kneeBias: -4 }),
+    upward: S("Upward", { detector: "rms", attackScale: 1.5, kneeBias: 4, releaseShape: "twoStage", relMul: [0.5, 3], upwardDefault: true })
+  };
+  if (Object.keys(STYLES).join() !== STYLE_IDS.join()) throw new Error("STYLES and STYLE_IDS out of sync");
+  var effectiveParams = (p) => ({ ...p, knee: clamp(Math.min(p.knee + STYLES[p.style].kneeBias, 4 * Math.max(0, -p.threshold)), 0, 30) });
+
+  // dsp/gain.js
+  var FLOOR_FADE_DB = 10;
+  function downwardDb(levelDb, p) {
+    const T = p.threshold, W2 = p.knee, R = p.ratio;
+    const d = levelDb - T;
+    let gain;
+    if (2 * d < -W2) gain = 0;
+    else if (W2 > 0 && 2 * Math.abs(d) <= W2) {
+      const k = d + W2 / 2;
+      gain = (1 / R - 1) * k * k / (2 * W2);
+    } else gain = d / R - d;
+    return Math.max(gain, -p.range);
+  }
+  function upwardDb(levelDb, p) {
+    const Tup = p.threshold - p.upWindow, W2 = p.knee, k = 1 - 1 / p.upAmount;
+    const d = Tup - levelDb;
+    let boost;
+    if (2 * d < -W2) boost = 0;
+    else if (W2 > 0 && 2 * Math.abs(d) <= W2) {
+      const e = d + W2 / 2;
+      boost = k * e * e / (2 * W2);
+    } else boost = d * k;
+    boost = Math.min(boost, p.upMaxBoost);
+    const f = clamp((levelDb - p.upFloor) / FLOOR_FADE_DB, 0, 1);
+    return boost * f * f * (3 - 2 * f);
+  }
+  function computeGainDb(levelDb, p) {
+    const g = downwardDb(levelDb, p);
+    return p.upward ? g + upwardDb(levelDb, p) : g;
+  }
+
+  // dsp/filters.js
+  var Biquad = class {
+    constructor() {
+      this.z1 = 0;
+      this.z2 = 0;
+      this.b0 = 1;
+      this.b1 = 0;
+      this.b2 = 0;
+      this.a1 = 0;
+      this.a2 = 0;
+    }
+    _set(b0, b1, b2, a0, a1, a2) {
+      this.b0 = b0 / a0;
+      this.b1 = b1 / a0;
+      this.b2 = b2 / a0;
+      this.a1 = a1 / a0;
+      this.a2 = a2 / a0;
+    }
+    setHighpass1(f, sr) {
+      const k = Math.tan(Math.PI * Math.min(f, 0.45 * sr) / sr);
+      this._set(1 / (1 + k), -1 / (1 + k), 0, 1, (k - 1) / (1 + k), 0);
+    }
+    setLowpass1(f, sr) {
+      const k = Math.tan(Math.PI * Math.min(f, 0.45 * sr) / sr);
+      this._set(k / (1 + k), k / (1 + k), 0, 1, (k - 1) / (1 + k), 0);
+    }
+    setHighpass(f, sr, q = Math.SQRT1_2) {
+      f = Math.min(f, 0.45 * sr);
+      const w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);
+      this._set((1 + cs) / 2, -(1 + cs), (1 + cs) / 2, 1 + al, -2 * cs, 1 - al);
+    }
+    setLowpass(f, sr, q = Math.SQRT1_2) {
+      f = Math.min(f, 0.45 * sr);
+      const w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);
+      this._set((1 - cs) / 2, 1 - cs, (1 - cs) / 2, 1 + al, -2 * cs, 1 - al);
+    }
+    setPeaking(f, gainDb, q, sr) {
+      f = Math.min(f, 0.45 * sr);
+      const A = Math.pow(10, gainDb / 40), w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * q);
+      this._set(1 + al * A, -2 * cs, 1 - al * A, 1 + al / A, -2 * cs, 1 - al / A);
+    }
+    // Magnitude response in dB at frequency f (used by the UI to draw the filter curve with the exact DSP coefficients).
+    magnitudeDb(f, sr) {
+      const w = 2 * Math.PI * f / sr, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+      const nr = this.b0 + this.b1 * c1 + this.b2 * c2, ni = -(this.b1 * s1 + this.b2 * s2);
+      const dr = 1 + this.a1 * c1 + this.a2 * c2, di = -(this.a1 * s1 + this.a2 * s2);
+      return 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di) + 1e-30);
+    }
+    process(x) {
+      const y = this.b0 * x + this.z1;
+      this.z1 = this.b1 * x - this.a1 * y + this.z2;
+      this.z2 = this.b2 * x - this.a2 * y;
+      if (!(Math.abs(this.z1) < 1e15 && Math.abs(this.z2) < 1e15)) {
+        this.z1 = 0;
+        this.z2 = 0;
+        return 0;
+      }
+      if (Math.abs(this.z1) < 1e-20) this.z1 = 0;
+      if (Math.abs(this.z2) < 1e-20) this.z2 = 0;
+      return y;
+    }
+  };
+  var SLOPE_OPTIONS = [6, 12, 24, 48];
+  var SLOPE_STAGES = { 6: null, 12: [Math.SQRT1_2], 24: [0.5412, 1.3066], 48: [0.5098, 0.6013, 0.9, 2.5629] };
+  var MAX_STAGES = 4;
+  var makeStages = () => Array.from({ length: MAX_STAGES }, () => new Biquad());
+  function configureCut(stages, kind, f, sr, slope) {
+    const qs = SLOPE_STAGES[slope];
+    if (qs === null) {
+      kind === "hp" ? stages[0].setHighpass1(f, sr) : stages[0].setLowpass1(f, sr);
+      return 1;
+    }
+    qs.forEach((q, k) => kind === "hp" ? stages[k].setHighpass(f, sr, q) : stages[k].setLowpass(f, sr, q));
+    return qs.length;
+  }
+
+  // dsp/compressor.js
+  var AUTO_TAU_S = 2;
+  var AUTO_BLOCK = 64;
+  var AUTO_REL_DENSITY_S = 0.7;
+  var AUTO_THR_TAU_S = 0.6;
+  var AUTO_THR_SMOOTH_S = 0.8;
+  var AUTO_REL_MIN_MS = 30;
+  var AUTO_REL_MAX_MS = 800;
+  var AUTO_FAST_S = 2;
+  var AUTO_FAST_TAU_S = 0.1;
+  var AUTO_WATCH = ["threshold", "ratio", "knee", "range", "style", "upward", "upAmount", "upWindow", "upMaxBoost", "upFloor", "autoGain", "autoThreshold", "unity"];
+  var LA_FADE_S = 0.08;
+  var UPWARD_MIN_LOOKAHEAD_MS = 2;
+  var RETRACT_MS = 0.5;
+  var AUTO_THR_REF_DB = -18;
+  var AUTO_THR_FREEZE_DB = -80;
+  var AUTO_THR_PAUSE_DB = 24;
+  var PEAK_RELEASE_MS = 10;
+  var coef = (ms, sr) => Math.exp(-1 / Math.max(ms * 1e-3 * sr, 1e-3));
+  var softLimit = (x) => {
+    const a = Math.abs(x);
+    return a <= 0.5 ? x : Math.sign(x) * (0.5 + 0.5 * Math.tanh((a - 0.5) / 0.5));
+  };
+  var Compressor = class {
+    constructor(sampleRate) {
+      this.sr = sampleRate;
+      this.p = sanitize({});
+      this.cfg = STYLES.clean;
+      this.pe = { ...this.p };
+      this.size = Math.ceil(0.01 * sampleRate) + 4;
+      this.dly = [new Float32Array(this.size), new Float32Array(this.size)];
+      this.w = 0;
+      this.hp = [makeStages(), makeStages()];
+      this.hpN = 1;
+      this.hpSlope = 12;
+      this.lp = [makeStages(), makeStages()];
+      this.lpN = 1;
+      this.lpSlope = 12;
+      this.bp = [new Biquad(), new Biquad()];
+      this.ms = [0, 0];
+      this.pk = [0, 0];
+      this.gF = [0, 0];
+      this.gS = [0, 0];
+      this.hold = [0, 0];
+      this.thrOffset = 0;
+      this.effThr = -24;
+      this.lis = 0;
+      this.dens = 0;
+      this.autoRelMs = 120;
+      this.curAttMs = 10;
+      this.ovr = [0, 0];
+      this.attShow = Math.log(10);
+      this.gIn = 0;
+      this.gOut = 0;
+      this.autoFast = Math.round(AUTO_FAST_S * sampleRate);
+      this.byp = 0;
+      this.trim = 1;
+      this.autoOffset = 0;
+      this.pIn = 0;
+      this.pOut = 0;
+      this.autoCount = 0;
+      this.lv = new Float64Array(2);
+      this.lin = new Float64Array(2);
+      this.laA = 0;
+      this.laB = 0;
+      this.laFade = 1;
+      this.started = false;
+      this.trimTarget = 1;
+      this.inPeak = 0;
+      this.outPeak = 0;
+      this.gainDbNow = 0;
+      this._derive();
+    }
+    get autoGainDb() {
+      return this.p.autoGain ? this.autoOffset : 0;
+    }
+    setParams(partial) {
+      const prev2 = this.p;
+      this.p = sanitize({ ...this.p, ...partial });
+      if (AUTO_WATCH.some((k) => prev2[k] !== this.p[k])) this.autoFast = Math.round(AUTO_FAST_S * this.sr);
+      this.cfg = STYLES[this.p.style];
+      this._derive();
+    }
+    _derive() {
+      const { sr, p, cfg } = this;
+      const minLa = p.upward ? Math.round(UPWARD_MIN_LOOKAHEAD_MS * 1e-3 * sr) : 0;
+      this.laSamples = Math.max(Math.round(p.lookahead * 1e-3 * sr), minLa);
+      if (!this.started) {
+        this.laA = this.laB = this.laSamples;
+        this.laFade = 1;
+      }
+      this.attKnobMs = p.tempoSync && !p.autoAttack ? noteToMs(p.attackNote, p.bpm, ATTACK_NOTES, 250) : p.attack;
+      this.retractC = coef(Math.min(this.attKnobMs * cfg.attackScale, RETRACT_MS), sr);
+      this.attMs = this.attKnobMs * cfg.attackScale;
+      this.attC = coef(this.attMs, sr);
+      this.relMul = cfg.releaseShape === "twoStage" ? cfg.relMul : p.autoRelease ? [0.25, 2.5] : [1, 1];
+      this.relKnobMs = p.tempoSync ? noteToMs(p.releaseNote, p.bpm) : p.release;
+      this._setRelease(p.autoRelease ? this.autoRelMs : this.relKnobMs);
+      this.densC = 1 - Math.exp(-1 / (AUTO_REL_DENSITY_S * sr));
+      this.ovC = 1 - Math.exp(-1 / (0.12 * sr));
+      this.attShowC = 1 - Math.exp(-1 / (0.25 * sr));
+      this.tC = Math.exp(-1 / (AUTO_THR_TAU_S * sr));
+      this.tCFast = Math.exp(-1 / (0.3 * sr));
+      this.thrStep = 1 - Math.exp(-AUTO_BLOCK / (AUTO_THR_SMOOTH_S * sr));
+      this.thrStepFast = 1 - Math.exp(-AUTO_BLOCK / (0.15 * sr));
+      if (!p.autoThreshold) this.thrOffset = 0;
+      Object.assign(this.pe, p, { knee: clamp(p.knee + cfg.kneeBias, 0, 30) });
+      this.effThr = this.pe.threshold = clamp(p.threshold + this.thrOffset, -60, 12);
+      this.holdSamples = Math.round(p.hold * 1e-3 * sr);
+      this.scLin = dbToLin(p.scLevel);
+      const wasHp = this.hpfOn, wasLp = this.lpfOn, wasBand = this.bandOn;
+      this.hpfOn = p.scOn && p.sidechainHpf > 20.5;
+      if (this.hpfOn) {
+        for (let c = 0; c < 2; c++) this.hpN = configureCut(this.hp[c], "hp", p.sidechainHpf, sr, p.scHpfSlope);
+        if (!wasHp || p.scHpfSlope !== this.hpSlope) for (const ch of this.hp) for (const st of ch) st.z1 = st.z2 = 0;
+      }
+      this.hpSlope = p.scHpfSlope;
+      this.lpfOn = p.scOn && p.scLpf < 19999;
+      if (this.lpfOn) {
+        for (let c = 0; c < 2; c++) this.lpN = configureCut(this.lp[c], "lp", p.scLpf, sr, p.scLpfSlope);
+        if (!wasLp || p.scLpfSlope !== this.lpSlope) for (const ch of this.lp) for (const st of ch) st.z1 = st.z2 = 0;
+      }
+      this.lpSlope = p.scLpfSlope;
+      this.bandOn = p.scOn && Math.abs(p.scBandGain) > 0.05;
+      if (this.bandOn) for (const f of this.bp) {
+        f.setPeaking(p.scBandFreq, p.scBandGain, p.scBandQ, sr);
+        if (!wasBand) f.z1 = f.z2 = 0;
+      }
+      if (!this.started) this.lis = p.scListen ? 1 : 0;
+      this.rmsC = coef(10, sr);
+      this.pkC = coef(PEAK_RELEASE_MS, sr);
+      this.peakDecay = coef(300, sr);
+      this.bypStep = 1 / (5e-3 * sr);
+      this.laStep = 1 / (LA_FADE_S * sr);
+      this.autoStep = 1 - Math.exp(-AUTO_BLOCK / (0.5 * sr));
+      this.pC = Math.exp(-1 / (AUTO_TAU_S * sr));
+      this.pCFast = Math.exp(-1 / (AUTO_FAST_TAU_S * sr));
+      this.autoStepFast = 1 - Math.exp(-AUTO_BLOCK / (0.05 * sr));
+    }
+    get latencySamples() {
+      return this.laSamples;
+    }
+    // relMs is in knob terms; the style scales it. Fast and slow stage use the style's (or Auto Release's) multipliers.
+    _setRelease(relMs) {
+      const rel = relMs * this.cfg.releaseScale, mul = this.relMul;
+      this.relFastC = coef(rel * mul[0], this.sr);
+      this.relSlowC = coef(rel * mul[1], this.sr);
+    }
+    // One smoothing stage in the dB domain. Falling gain = attack (or fast retraction of a boost); rising = release unless held.
+    _stage(g, target, relC, holding) {
+      if (target < g) return target + (g - target) * (g > 0 ? this.retractC : this.attC);
+      return holding ? g : target + (g - target) * relC;
+    }
+    get meters() {
+      const { p } = this;
+      return {
+        gainDb: this.gainDbNow,
+        inPeakDb: linToDb(this.inPeak),
+        outPeakDb: linToDb(this.outPeak),
+        thresholdDb: this.effThr,
+        autoAttackMs: p.autoAttack ? this.curAttMs : this.attKnobMs,
+        autoReleaseMs: p.autoRelease ? this.autoRelMs : this.relKnobMs
+      };
+    }
+    // keyL/keyR: the external sidechain (key) input; used only when the External switch is on (a missing key counts as silence).
+    process(inL, inR, outL, outR, n2, keyL = null, keyR = null) {
+      const { p, cfg, size, dly, laSamples: la } = this;
+      const det = cfg.detector, useRms = det !== "peak", pe = this.pe;
+      const wet = p.mix / 100, bypT = p.bypass ? 1 : 0, ext = p.scOn && p.scExternal;
+      const gF = this.gF, gS = this.gS, hold = this.hold, lv = this.lv, lin0 = this.lin;
+      this.started = true;
+      for (let i = 0; i < n2; i++) {
+        const x0 = inL[i], x1 = inR[i];
+        dly[0][this.w] = x0;
+        dly[1][this.w] = x1;
+        if (this.laFade >= 1 && this.laB !== la) {
+          this.laB = la;
+          this.laFade = 0;
+        }
+        const rA = (this.w - this.laA + size) % size;
+        let d0 = dly[0][rA], d1 = dly[1][rA];
+        if (this.laFade < 1) {
+          this.laFade = Math.min(1, this.laFade + this.laStep);
+          const rB = (this.w - this.laB + size) % size, f = this.laFade;
+          d0 += (dly[0][rB] - d0) * f;
+          d1 += (dly[1][rB] - d1) * f;
+          if (f >= 1) this.laA = this.laB;
+        }
+        this.w = (this.w + 1) % size;
+        const k0 = ext ? keyL ? keyL[i] : 0 : x0, k1 = ext ? keyR ? keyR[i] : 0 : x1;
+        let s0 = k0, s1 = k1;
+        if (this.hpfOn) for (let k = 0; k < this.hpN; k++) {
+          s0 = this.hp[0][k].process(s0);
+          s1 = this.hp[1][k].process(s1);
+        }
+        if (this.lpfOn) for (let k = 0; k < this.lpN; k++) {
+          s0 = this.lp[0][k].process(s0);
+          s1 = this.lp[1][k].process(s1);
+        }
+        if (this.bandOn) {
+          s0 = this.bp[0].process(s0);
+          s1 = this.bp[1].process(s1);
+        }
+        this.pk[0] = Math.max(Math.abs(s0), this.pk[0] * this.pkC);
+        this.pk[1] = Math.max(Math.abs(s1), this.pk[1] * this.pkC);
+        let l0 = this.pk[0], l1 = this.pk[1];
+        if (useRms) {
+          this.ms[0] = this.ms[0] * this.rmsC + s0 * s0 * (1 - this.rmsC);
+          this.ms[1] = this.ms[1] * this.rmsC + s1 * s1 * (1 - this.rmsC);
+          const r0 = Math.sqrt(this.ms[0]) * Math.SQRT2, r1 = Math.sqrt(this.ms[1]) * Math.SQRT2;
+          if (det === "rms") {
+            l0 = r0;
+            l1 = r1;
+          } else {
+            l0 = 0.5 * (l0 + r0);
+            l1 = 0.5 * (l1 + r1);
+          }
+        }
+        const mx = Math.max(l0, l1);
+        lv[0] = mx;
+        lv[1] = mx;
+        let gSum = 0;
+        for (let c = 0; c < 2; c++) {
+          if (cfg.varimu) pe.ratio = p.ratio * (1 + cfg.varimu * clamp(-(0.5 * (gF[c] + gS[c])) / 12, 0, 2));
+          const lvDb = linToDb(lv[c]);
+          const target = computeGainDb(lvDb, pe);
+          if (p.autoAttack) {
+            const over = Math.max(0, lvDb - pe.threshold);
+            let ov = this.ovr[c];
+            ov = over > ov ? over : ov + (over - ov) * this.ovC;
+            this.ovr[c] = ov;
+            const am = Math.max(0.1, this.attMs * Math.pow(10, -ov / 20));
+            this.attC = coef(am, this.sr);
+            if (c === 0) {
+              this.attShow += (Math.log(am / cfg.attackScale) - this.attShow) * this.attShowC;
+              this.curAttMs = Math.exp(this.attShow);
+            }
+          }
+          const gf = gF[c], attacking = target < gf;
+          if (attacking) hold[c] = this.holdSamples;
+          const holding = !attacking && hold[c] > 0;
+          if (holding) hold[c]--;
+          gF[c] = this._stage(gf, target, this.relFastC, holding);
+          gS[c] = this._stage(gS[c], target, this.relSlowC, holding);
+          const g = 0.5 * (gF[c] + gS[c]);
+          gSum += g;
+          lin0[c] = dbToLin(g);
+        }
+        this.gainDbNow = gSum / 2;
+        this.dens += (clamp(-this.gainDbNow / 6, 0, 1) - this.dens) * this.densC;
+        const w0 = d0 * lin0[0], w1 = d1 * lin0[1];
+        const fast = this.autoFast > 0;
+        if (fast) this.autoFast--;
+        const tc = fast ? this.tCFast : this.tC;
+        this.pIn = this.pIn * tc + (k0 * k0 + k1 * k1) * (1 - tc);
+        const gc = fast ? this.pCFast : this.pC;
+        this.gIn = this.gIn * gc + (x0 * x0 + x1 * x1) * (1 - gc);
+        this.gOut = this.gOut * gc + (w0 * w0 + w1 * w1) * (1 - gc);
+        if (++this.autoCount >= AUTO_BLOCK) {
+          this.autoCount = 0;
+          if (this.gIn > 1e-12 && this.gOut > 1e-12) {
+            const t = clamp(10 * Math.log10(this.gIn / this.gOut), -24, 24);
+            this.autoOffset += (t - this.autoOffset) * (this.autoFast > 0 ? this.autoStepFast : this.autoStep);
+          }
+          if (p.autoRelease) {
+            this.autoRelMs = AUTO_REL_MIN_MS * Math.pow(AUTO_REL_MAX_MS / AUTO_REL_MIN_MS, this.dens);
+            this._setRelease(this.autoRelMs);
+          }
+          if (p.autoThreshold) {
+            const levelDb = 10 * Math.log10(this.pIn * 0.5 + 1e-30);
+            const fastDb = linToDb(this.inPeak);
+            if (levelDb > AUTO_THR_FREEZE_DB && fastDb > levelDb - AUTO_THR_PAUSE_DB) this.thrOffset += (levelDb - AUTO_THR_REF_DB - this.thrOffset) * (fast ? this.thrStepFast : this.thrStep);
+            this.thrOffset = clamp(this.thrOffset, -60 - p.threshold, 12 - p.threshold);
+            this.effThr = pe.threshold = clamp(p.threshold + this.thrOffset, -60, 12);
+          }
+          const delta = (p.unity ? this.autoOffset : p.gain + (p.autoGain ? this.autoOffset : 0)) - this.autoOffset;
+          this.trimTarget = p.loudnessMatch ? dbToLin(delta) : 1;
+        }
+        this.trim += (this.trimTarget - this.trim) * 5e-4;
+        const mk = dbToLin(p.unity ? this.autoOffset : p.gain + (p.autoGain ? this.autoOffset : 0));
+        let v0 = w0 * mk, v1 = w1 * mk;
+        if (cfg.saturation) {
+          const a = cfg.saturation;
+          v0 = (1 - a) * v0 + a * Math.tanh(v0);
+          v1 = (1 - a) * v1 + a * Math.tanh(v1);
+        }
+        const o0 = d0 * (1 - wet) + v0 * wet;
+        const o1 = d1 * (1 - wet) + v1 * wet;
+        if (this.byp < bypT) this.byp = Math.min(bypT, this.byp + this.bypStep);
+        else if (this.byp > bypT) this.byp = Math.max(bypT, this.byp - this.bypStep);
+        const b = this.byp;
+        let y0 = d0 * this.trim * b + o0 * (1 - b), y1 = d1 * this.trim * b + o1 * (1 - b);
+        const lisT = p.scListen ? 1 : 0;
+        if (this.lis < lisT) this.lis = Math.min(lisT, this.lis + this.bypStep);
+        else if (this.lis > lisT) this.lis = Math.max(lisT, this.lis - this.bypStep);
+        if (this.lis > 0) {
+          const l = this.lis;
+          y0 = y0 * (1 - l) + softLimit(s0 * this.scLin) * l;
+          y1 = y1 * (1 - l) + softLimit(s1 * this.scLin) * l;
+        }
+        this.inPeak = Math.max(Math.abs(x0), Math.abs(x1), this.inPeak * this.peakDecay);
+        this.outPeak = Math.max(Math.abs(y0), Math.abs(y1), this.outPeak * this.peakDecay);
+        outL[i] = y0;
+        outR[i] = y1;
+      }
+    }
+  };
+
+  // dsp/oversample.js
+  var STAGE_K = [12, 4, 4];
+  var KAISER_BETA = 8;
+  var sinc = (x) => x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+  var bessel0 = (x) => {
+    let s = 1, t = 1;
+    for (let k = 1; k < 40; k++) {
+      t *= x / (2 * k) * (x / (2 * k));
+      s += t;
+    }
+    return s;
+  };
+  function halfband(K) {
+    const L = 4 * K + 1, c = 2 * K, h = new Float64Array(L), i0 = bessel0(KAISER_BETA);
+    for (let j = 0; j < L; j++) {
+      const r = (j - c) / c;
+      h[j] = 0.5 * sinc((j - c) / 2) * (bessel0(KAISER_BETA * Math.sqrt(Math.max(0, 1 - r * r))) / i0);
+    }
+    return h;
+  }
+  var osLatency = (factor) => {
+    let lat = 0;
+    for (let s = 0, f = 1; f < factor; s++, f *= 2) lat += 2 * STAGE_K[s] / f;
+    return lat;
+  };
+  var Up2 = class {
+    constructor(K) {
+      this.K = K;
+      this.n = 2 * K;
+      this.hist = new Float64Array(this.n);
+      this.pos = 0;
+      const h = halfband(K);
+      this.g = new Float64Array(this.n);
+      for (let k = 0; k < this.n; k++) this.g[k] = 2 * h[2 * k + 1];
+    }
+    process(x, out, n2) {
+      const { hist, g, K } = this, N = this.n;
+      let pos = this.pos;
+      for (let i = 0; i < n2; i++) {
+        hist[pos] = x[i];
+        let s = 0;
+        for (let k = 0, p = pos; k < N; k++, p = p === 0 ? N - 1 : p - 1) s += g[k] * hist[p];
+        out[2 * i] = hist[(pos - K + N) % N];
+        out[2 * i + 1] = s;
+        pos = pos === N - 1 ? 0 : pos + 1;
+      }
+      this.pos = pos;
+    }
+  };
+  var Down2 = class {
+    constructor(K) {
+      this.K = K;
+      this.L = 4 * K + 1;
+      this.c = 2 * K;
+      this.hist = new Float64Array(this.L);
+      this.pos = 0;
+      this.h = halfband(K);
+    }
+    push(v) {
+      this.hist[this.pos] = v;
+      this.pos = this.pos === this.L - 1 ? 0 : this.pos + 1;
+    }
+    at(j) {
+      return this.hist[(this.pos - 1 - j + this.L * 2) % this.L];
+    }
+    // j samples back from the newest
+    process(w, out, n2) {
+      const { h, L, c } = this;
+      for (let i = 0; i < n2; i++) {
+        this.push(w[2 * i]);
+        let s = h[c] * this.at(c);
+        for (let j = 1; j < L - 1; j += 2) s += h[j] * this.at(j);
+        out[i] = s;
+        this.push(w[2 * i + 1]);
+      }
+    }
+  };
+  var Oversampler = class {
+    constructor(factor) {
+      this.factor = factor;
+      this.ups = [];
+      this.downs = [];
+      this.tmp = [];
+      for (let s = 0, f = 1; f < factor; s++, f *= 2) {
+        this.ups.push(new Up2(STAGE_K[s]));
+        this.downs.push(new Down2(STAGE_K[s]));
+        this.tmp.push(new Float32Array(0));
+      }
+    }
+    _buf(s, len) {
+      if (this.tmp[s].length < len) this.tmp[s] = new Float32Array(len);
+      return this.tmp[s];
+    }
+    up(x, out, n2) {
+      let cur = x, len = n2;
+      for (let s = 0; s < this.ups.length; s++) {
+        const dst = s === this.ups.length - 1 ? out : this._buf(s, len * 2);
+        this.ups[s].process(cur, dst, len);
+        cur = dst;
+        len *= 2;
+      }
+    }
+    down(inp, out, n2) {
+      let cur = inp, len = n2 * this.factor;
+      for (let s = this.downs.length - 1; s >= 0; s--) {
+        len /= 2;
+        const dst = s === 0 ? out : this._buf(s, len);
+        this.downs[s].process(cur, dst, len);
+        cur = dst;
+      }
+    }
+  };
+  var OversampledCompressor = class {
+    constructor(sampleRate) {
+      this.sr = sampleRate;
+      this.p = sanitize({});
+      this.factor = 1;
+      this.core = new Compressor(sampleRate);
+      this.os = null;
+      this.buf = Array.from({ length: 6 }, () => new Float32Array(0));
+    }
+    setParams(partial) {
+      this.p = sanitize({ ...this.p, ...partial });
+      const f = this.p.oversampling;
+      if (f !== this.factor) {
+        const old = this.core, core = new Compressor(this.sr * f);
+        core.setParams(this.p);
+        for (const k of ["byp", "lis", "thrOffset", "autoOffset", "pIn", "pOut", "gIn", "gOut", "autoFast", "dens", "autoRelMs", "curAttMs", "trim", "trimTarget", "inPeak", "outPeak", "gainDbNow"]) core[k] = old[k];
+        core.gF = [...old.gF];
+        core.gS = [...old.gS];
+        this.core = core;
+        this.factor = f;
+        this.os = f > 1 ? [new Oversampler(f), new Oversampler(f), new Oversampler(f), new Oversampler(f)] : null;
+      } else this.core.setParams(this.p);
+    }
+    get latencySamples() {
+      return Math.round(this.core.latencySamples / this.factor) + osLatency(this.factor);
+    }
+    get meters() {
+      return this.core.meters;
+    }
+    get autoGainDb() {
+      return this.core.autoGainDb;
+    }
+    process(inL, inR, outL, outR, n2, keyL = null, keyR = null) {
+      if (this.factor === 1) {
+        this.core.process(inL, inR, outL, outR, n2, keyL, keyR);
+        return;
+      }
+      const m = n2 * this.factor, b = this.buf, ext = this.p.scOn && this.p.scExternal && keyL;
+      for (let i = 0; i < 6; i++) if (b[i].length < m) b[i] = new Float32Array(m);
+      this.os[0].up(inL, b[0], n2);
+      this.os[1].up(inR, b[1], n2);
+      if (ext) {
+        this.os[2].up(keyL, b[4], n2);
+        this.os[3].up(keyR || keyL, b[5], n2);
+      }
+      this.core.process(b[0], b[1], b[2], b[3], m, ext ? b[4] : null, ext ? b[5] : null);
+      this.os[0].down(b[2], outL, n2);
+      this.os[1].down(b[3], outR, n2);
+    }
+  };
+
+  // dsp/runner.js
+  var REPORT_S = 0.016;
+  var db = (v) => v <= 1e-6 ? -120 : 20 * Math.log10(v);
+  var Runner = class {
+    constructor(sampleRate, post) {
+      this.sr = sampleRate;
+      this.post = post;
+      this.comp = new OversampledCompressor(sampleRate);
+      this.scratch = new Float32Array(128);
+      this.frames = 0;
+      this.blockIn = 0;
+      this.blockOut = 0;
+    }
+    setParams(p) {
+      this.comp.setParams(p);
+    }
+    // oR may be null for a mono output; a scratch buffer is used then.
+    // kL/kR: the key (external sidechain) channels when the host provides them
+    process(L, R, oL, oR, n2, kL = null, kR = null) {
+      if (!oR) {
+        if (this.scratch.length < n2) this.scratch = new Float32Array(n2);
+        oR = this.scratch;
+      }
+      this.comp.process(L, R, oL, oR, n2, kL, kR);
+      for (let i = 0; i < n2; i++) {
+        const a = Math.max(Math.abs(L[i]), Math.abs(R[i])), b = Math.max(Math.abs(oL[i]), Math.abs(oR[i]));
+        if (a > this.blockIn) this.blockIn = a;
+        if (b > this.blockOut) this.blockOut = b;
+      }
+      this.frames += n2;
+      if (this.frames >= REPORT_S * this.sr) {
+        const m = this.comp.meters;
+        this.post({ type: "meters", gainDb: m.gainDb, inPeakDb: m.inPeakDb, outPeakDb: m.outPeakDb, thresholdDb: m.thresholdDb, latencySamples: this.comp.latencySamples, autoGainDb: this.comp.autoGainDb, autoAttackMs: m.autoAttackMs, autoReleaseMs: m.autoReleaseMs, inDb: db(this.blockIn), outDb: db(this.blockOut) });
+        this.frames = 0;
+        this.blockIn = 0;
+        this.blockOut = 0;
+      }
+    }
+  };
+
+  // ui/audio.js
+  var DECODE_ERROR = "Could not read this file. Try WAV or MP3.";
+  var blobUrl = (src) => URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+  var dataUrl = (src) => {
+    const bytes = new TextEncoder().encode(src);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return "data:text/javascript;base64," + btoa(bin);
+  };
+  async function makeNode(ctx, forceFallback) {
+    if (!forceFallback && ctx.audioWorklet) {
+      for (const makeUrl of [blobUrl, dataUrl]) {
+        try {
+          await ctx.audioWorklet.addModule(makeUrl(window.__WORKLET_SRC__));
+          const node = new AudioWorkletNode(ctx, "purple-comp", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 4, channelCountMode: "explicit", channelInterpretation: "discrete" });
+          return {
+            node,
+            mode: "worklet",
+            post: (params) => node.port.postMessage({ type: "params", params }),
+            onMessage: (cb2) => {
+              node.port.onmessage = (e) => {
+                if (e.data && e.data.type === "meters") cb2(e.data);
+              };
+            }
+          };
+        } catch {
+        }
+      }
+    }
+    const sp = ctx.createScriptProcessor(1024, 4, 2);
+    let cb = () => {
+    };
+    const runner = new Runner(ctx.sampleRate, (m) => cb(m));
+    sp.onaudioprocess = (e) => {
+      const i = e.inputBuffer, o = e.outputBuffer;
+      const four = i.numberOfChannels >= 4;
+      runner.process(i.getChannelData(0), i.getChannelData(Math.min(1, i.numberOfChannels - 1)), o.getChannelData(0), o.getChannelData(1), i.length, four ? i.getChannelData(2) : null, four ? i.getChannelData(3) : null);
+    };
+    return { node: sp, mode: "script-processor", post: (p) => runner.setParams(p), onMessage: (f) => {
+      cb = f;
+    } };
+  }
+  async function createAudioEngine() {
+    const ctx = new AudioContext({ latencyHint: "interactive" });
+    const forceFallback = /[?&]noworklet\b/.test(location.search);
+    const { node, mode, post: postParams, onMessage } = await makeNode(ctx, forceFallback);
+    node.connect(ctx.destination);
+    const stereoIn = () => {
+      const g = ctx.createGain();
+      g.channelCount = 2;
+      g.channelCountMode = "explicit";
+      g.channelInterpretation = "speakers";
+      return g;
+    };
+    const mainIn = stereoIn(), keyIn = stereoIn(), mainSplit = ctx.createChannelSplitter(2), keySplit = ctx.createChannelSplitter(2), merger = ctx.createChannelMerger(4);
+    mainIn.connect(mainSplit);
+    mainSplit.connect(merger, 0, 0);
+    mainSplit.connect(merger, 1, 1);
+    keyIn.connect(keySplit);
+    keySplit.connect(merger, 0, 2);
+    keySplit.connect(merger, 1, 3);
+    merger.connect(node);
+    const makeAnalyser = () => {
+      const a = ctx.createAnalyser();
+      a.fftSize = 8192;
+      a.smoothingTimeConstant = 0.8;
+      a.minDecibels = -100;
+      a.maxDecibels = 0;
+      return a;
+    };
+    const analyser = makeAnalyser(), keyAnalyser = makeAnalyser();
+    mainIn.connect(analyser);
+    keyIn.connect(keyAnalyser);
+    let buffer = null, keyBuffer = null, source = null, keySource = null, external = false, startedAt = 0, offset = 0, loop = false, original = false, userBypass = false;
+    const meterCbs = [];
+    const state = { duration: 0, position: 0, playing: false, keyName: "" };
+    onMessage((m) => {
+      for (const cb of meterCbs) cb(m);
+    });
+    const post = postParams;
+    const applyMode = () => post({ bypass: userBypass || original, loudnessMatch: original && !userBypass });
+    const position = () => {
+      if (!buffer) return 0;
+      if (!state.playing) return offset;
+      const p = offset + (ctx.currentTime - startedAt);
+      return loop ? p % buffer.duration : Math.min(p, buffer.duration);
+    };
+    const killSource = () => {
+      if (source) {
+        source.onended = null;
+        try {
+          source.stop();
+        } catch {
+        }
+        source.disconnect();
+        source = null;
+      }
+      if (keySource) {
+        try {
+          keySource.stop();
+        } catch {
+        }
+        keySource.disconnect();
+        keySource = null;
+      }
+    };
+    const refresh = () => {
+      state.position = position();
+    };
+    const tick = setInterval(refresh, 50);
+    const start = () => {
+      killSource();
+      source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = loop;
+      source.connect(mainIn);
+      source.onended = () => {
+        if (!loop) {
+          state.playing = false;
+          offset = 0;
+          refresh();
+        }
+      };
+      source.start(0, offset);
+      if (keyBuffer) {
+        keySource = ctx.createBufferSource();
+        keySource.buffer = keyBuffer;
+        keySource.loop = true;
+        keySource.connect(keyIn);
+        keySource.start(0, offset % keyBuffer.duration);
+      }
+      startedAt = ctx.currentTime;
+      state.playing = true;
+    };
+    const engine2 = {
+      ctx,
+      state,
+      mode,
+      binCount: analyser.frequencyBinCount,
+      // Copies the current input spectrum (dB per bin) into `out`; false when nothing is playing.
+      spectrum(out) {
+        const a = external && keyBuffer ? keyAnalyser : analyser;
+        if (!state.playing || out.length !== a.frequencyBinCount) return false;
+        a.getFloatFrequencyData(out);
+        return true;
+      },
+      async loadKey(file) {
+        let decoded;
+        try {
+          decoded = await ctx.decodeAudioData(await file.arrayBuffer());
+        } catch {
+          throw new Error(DECODE_ERROR);
+        }
+        keyBuffer = decoded;
+        state.keyName = file.name;
+        if (state.playing) start();
+      },
+      clearKey() {
+        keyBuffer = null;
+        state.keyName = "";
+        if (state.playing) start();
+      },
+      async loadFile(file) {
+        let decoded;
+        try {
+          decoded = await ctx.decodeAudioData(await file.arrayBuffer());
+        } catch {
+          throw new Error(DECODE_ERROR);
+        }
+        killSource();
+        state.playing = false;
+        offset = 0;
+        buffer = decoded;
+        state.duration = decoded.duration;
+        refresh();
+      },
+      async play() {
+        if (!buffer) return;
+        await ctx.resume();
+        if (!state.playing) start();
+      },
+      pause() {
+        if (!state.playing) return;
+        offset = position();
+        killSource();
+        state.playing = false;
+        refresh();
+      },
+      seek(sec) {
+        if (!buffer) return;
+        offset = Math.max(0, Math.min(sec, buffer.duration - 1e-3));
+        if (state.playing) start();
+        refresh();
+      },
+      setLoop(b) {
+        loop = b;
+        if (source) source.loop = b;
+      },
+      setParams(p) {
+        if ("scExternal" in p) external = Boolean(p.scExternal);
+        if ("bypass" in p) {
+          userBypass = Boolean(p.bypass);
+          applyMode();
+          const { bypass, ...rest } = p;
+          if (Object.keys(rest).length) post(rest);
+        } else post(p);
+      },
+      setMode(m) {
+        original = m === "original";
+        applyMode();
+      },
+      onMeters(cb) {
+        meterCbs.push(cb);
+      },
+      dispose() {
+        clearInterval(tick);
+        killSource();
+        ctx.close();
+      }
+    };
+    applyMode();
+    return engine2;
+  }
+
+  // ui/tooltip.js
+  var TOOLTIP_DELAY_MS = 2500;
+  var TOOLTIPS = {
+    threshold: "Level above which the compressor starts working. Lower it and more of the sound gets compressed; at 0 dB nothing below full scale is touched.",
+    ratio: "How strongly sound above the threshold is reduced. 2:1 turns 2 dB over the threshold into 1 dB; 10:1 and above acts almost like a limiter.",
+    knee: "How gradually compression kicks in around the threshold. A hard knee (0) bites at once, a soft knee blends in smoothly and sounds gentler.",
+    attack: "How fast the compressor reacts to loud sound. Slow lets the first hit through (punch), fast catches it and makes the sound softer.",
+    release: "How fast the compressor lets go after loud sound. Short gives energy and pumping, long sounds smooth and steady.",
+    autoRelease: "Release adapts to the material: short for rare hits, longer when the sound is compressed all the time. The knob shows the live value.",
+    autoThreshold: "The threshold follows the average input level, so the amount of compression stays similar when the input gets louder or quieter.",
+    scLevel: "Volume of the sidechain signal in Listen mode only. It does not change the sound of the compressor itself.",
+    scLpf: "Removes highs from the signal the compressor listens to, so bright sounds such as hi-hats trigger it less. Mouse wheel on the point sets the slope.",
+    scBand: "Boosts or cuts a frequency range in the signal the compressor listens to, to make it react more or less to that range.",
+    scSlope: "Mouse wheel on the HPF or LPF point sets its slope: 6, 12, 24 or 48 dB per octave. Steeper cuts are sharper.",
+    scOn: "Side Chain on or off. Off = the compressor listens to the plain input, with no filters and no external track.",
+    scSource: "Internal: the compressor listens to its own input. External: it listens to another track, for example a kick that ducks a bass.",
+    scListen: "Hear the signal the compressor listens to (after the filters) instead of the output. Handy to set HPF and LPF by ear.",
+    autoAttack: "Attack adapts to the signal: the further it exceeds the threshold, the faster the attack. The knob is the slowest attack and shows the live value.",
+    hold: "How long the compression is held before the release starts. Useful against distortion on low notes and for steadier bass.",
+    range: "Limits the maximum gain reduction. At 12 dB the compressor never turns the sound down by more than 12 dB, however loud the input gets.",
+    lookahead: "The compressor sees loud hits in advance and starts reducing before they arrive. Costs a little delay (latency).",
+    style: "Compression character: clean, optical, tube and more. A style changes detector, timing and knee, not your knob values.",
+    autoGain: "Keeps loudness the same before and after compression by adding makeup gain automatically, so you judge the sound and not the volume.",
+    mix: "Blends in the uncompressed sound. 100% is fully compressed; lower values give parallel compression that keeps the punch.",
+    gain: "Output level after compression (makeup gain). It is locked while Auto Gain or 1:1 is on.",
+    sidechainHpf: "Removes bass from the signal the compressor listens to, so kicks and bass don't squash everything. Mouse wheel on the point sets the slope.",
+    upward: "Switches Upward compression on or off. It lifts quiet sound while normal compression turns loud sound down.",
+    upAmount: "How strongly quiet sound is lifted. 1:1 = off. At 2:1 every 2 dB below the Upward threshold is raised by 1 dB.",
+    upWindow: "Gap between the two thresholds. Sound inside the window is left alone; only sound below the lower line is lifted.",
+    upMaxBoost: "Shown on the right scale. The most gain that can be added to quiet sound. Keeps the lift under control so peaks do not clip and noise is not blown up.",
+    upFloor: "Below this input level nothing is lifted, so noise and silence between notes stay quiet instead of being raised.",
+    ab: "Two settings slots to compare. Switch between A and B while listening; the other slot keeps its settings.",
+    unity: "Unity gain: the output keeps the loudness of the input, so you hear only what the compressor does and not that it got quieter.",
+    tempoSync: "Tempo sync: Attack and Release are set in note values of the project tempo instead of milliseconds. AUTO knobs ignore it.",
+    settings: "Settings: oversampling for less aliasing, and low latency mode that draws the display at 30 fps to leave CPU for the audio.",
+    lowLatency: "Draws the display at 30 fps instead of 60 to leave more CPU for the audio. The sound is not affected.",
+    scale: "How many dB the display shows below 0 dB. A smaller range is closer up, 60 dB shows the whole threshold range.",
+    oversampling: "Processes at a higher sample rate for less aliasing. Higher values cost more CPU and add a little delay.",
+    bypass: "Turns the compressor off to compare with the original. Nothing is processed while it is on.",
+    mode: "Switches between the original and the processed sound at equal loudness, so the louder one does not seem better."
+  };
+  var tipEl = null;
+  var timer = null;
+  function ensureEl() {
+    if (!tipEl) {
+      tipEl = document.createElement("div");
+      tipEl.className = "tooltip";
+      tipEl.setAttribute("role", "tooltip");
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
+  function hideTooltip() {
+    clearTimeout(timer);
+    timer = null;
+    if (tipEl) tipEl.classList.remove("show");
+  }
+  function showTooltip(target, text) {
+    const el2 = ensureEl();
+    el2.textContent = text;
+    el2.classList.add("show");
+    const help2 = document.getElementById("help"), r = (help2 || target).getBoundingClientRect(), t = el2.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - t.width - 8, r.right - t.width));
+    el2.style.left = left + "px";
+    el2.style.top = r.bottom + 12 + "px";
+    el2.style.setProperty("--arrow-x", Math.max(14, Math.min(t.width - 14, r.left + r.width / 2 - left)) + "px");
+  }
+  function attachTooltip(el2, text) {
+    el2.addEventListener("pointerenter", () => {
+      hideTooltip();
+      timer = setTimeout(() => showTooltip(el2, text), TOOLTIP_DELAY_MS);
+    });
+    for (const ev of ["pointerleave", "pointerdown", "click", "wheel"]) el2.addEventListener(ev, hideTooltip);
+  }
+
+  // ui/transport.js
+  var NO_AUDIO_ERROR = "Audio playback is not available in this browser.";
+  function createTransport({ onEngine, onKey = () => {
+  }, onBpm = () => {
+  } }) {
+    const el2 = document.createElement("div");
+    el2.className = "transport";
+    el2.id = "demo-bar";
+    el2.innerHTML = `
+    <span class="demo-title">Demo player</span>
+    <label class="btn" id="load">Load audio<input id="file" type="file" accept="audio/*" hidden></label>
+    <label class="btn" id="load-key" title="A second track for the External sidechain">Load sidechain audio<input id="key-file" type="file" accept="audio/*" hidden></label>
+    <button id="play" class="btn" disabled>Play</button>
+    <button id="pause" class="btn" disabled>Pause</button>
+    <label class="chk"><input id="loop" type="checkbox"> Loop</label>
+    <label class="chk" title="The project tempo a host would give the plugin (for Tempo Sync)">BPM <input id="bpm" type="number" min="20" max="300" step="1" value="120"></label>
+    <button id="mode" class="btn" aria-pressed="false" disabled>Compressed</button>
+    <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek" disabled>
+    <span id="status"></span>
+    <span id="engine-mode"></span>
+    <div id="error" role="alert"></div>`;
+    const $ = (s) => el2.querySelector(s);
+    $("#mode").dataset.tooltip = "mode";
+    attachTooltip($("#mode"), TOOLTIPS.mode);
+    let engine2 = null, pending = null, mode = "compressed";
+    const ensure = () => pending || (pending = createAudioEngine().then((e) => {
+      engine2 = e;
+      onEngine(e);
+      $("#engine-mode").textContent = e.mode === "worklet" ? "Engine: AudioWorklet" : "Engine: fallback (main thread)";
+      return e;
+    }));
+    const setError = (m) => {
+      $("#error").textContent = m;
+    };
+    async function load(file) {
+      setError("");
+      let e;
+      try {
+        e = await ensure();
+      } catch {
+        pending = null;
+        setError(NO_AUDIO_ERROR);
+        return;
+      }
+      try {
+        await e.loadFile(file);
+        $("#status").textContent = `${file.name} \xB7 ${e.state.duration.toFixed(1)} s`;
+        for (const id of ["#play", "#pause", "#mode", "#seek"]) $(id).disabled = false;
+      } catch {
+        setError(DECODE_ERROR);
+      }
+    }
+    async function loadKey(file) {
+      setError("");
+      let e;
+      try {
+        e = await ensure();
+      } catch {
+        pending = null;
+        setError(NO_AUDIO_ERROR);
+        return;
+      }
+      try {
+        await e.loadKey(file);
+        onKey(file.name);
+      } catch {
+        setError(DECODE_ERROR);
+      }
+    }
+    $("#key-file").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) loadKey(f);
+    });
+    $("#file").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) load(f);
+    });
+    $("#play").addEventListener("click", async () => {
+      try {
+        await (await ensure()).play();
+      } catch {
+        pending = null;
+        setError(NO_AUDIO_ERROR);
+      }
+    });
+    $("#pause").addEventListener("click", () => engine2 && engine2.pause());
+    let seeking = false;
+    $("#seek").addEventListener("input", (e) => {
+      seeking = true;
+      if (engine2 && engine2.state.duration) engine2.seek(e.target.value / 100 * engine2.state.duration);
+    });
+    $("#seek").addEventListener("change", () => {
+      seeking = false;
+    });
+    setInterval(() => {
+      if (engine2 && engine2.state.duration && !seeking) $("#seek").value = String(engine2.state.position / engine2.state.duration * 100);
+    }, 100);
+    $("#bpm").addEventListener("input", (e) => {
+      const v = Number(e.target.value);
+      if (Number.isFinite(v) && v >= 20 && v <= 300) onBpm(v);
+    });
+    $("#bpm").addEventListener("change", (e) => {
+      const v = Math.min(300, Math.max(20, Number(e.target.value) || 120));
+      e.target.value = String(v);
+      onBpm(v);
+    });
+    $("#loop").addEventListener("change", (e) => engine2 && engine2.setLoop(e.target.checked));
+    $("#mode").addEventListener("click", () => {
+      mode = mode === "compressed" ? "original" : "compressed";
+      $("#mode").textContent = mode === "original" ? "Original" : "Compressed";
+      $("#mode").setAttribute("aria-pressed", String(mode === "original"));
+      if (engine2) engine2.setMode(mode);
+    });
+    for (const t of ["dragover", "drop"]) window.addEventListener(t, (e) => {
+      e.preventDefault();
+      if (t === "drop" && e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+    });
+    return { el: el2, getEngine: () => engine2, getMode: () => mode };
+  }
+
+  // ui/levelcolor.js
+  function ringColor(db2) {
+    const lerp = (a, b, t) => a + (b - a) * Math.max(0, Math.min(1, t));
+    const hue = db2 <= -30 ? 135 : db2 <= -12 ? lerp(135, 58, (db2 + 30) / 18) : db2 <= -4 ? lerp(58, 30, (db2 + 12) / 8) : lerp(30, 2, (db2 + 4) / 4);
+    return `hsl(${hue.toFixed(0)} 82% 52%)`;
+  }
+
+  // ui/knob.js
+  var isLog = (spec) => spec.min > 0 && spec.max / spec.min >= 50;
+  function valueToNorm(spec, v) {
+    const c = Math.min(spec.max, Math.max(spec.min, v));
+    return isLog(spec) ? Math.log(c / spec.min) / Math.log(spec.max / spec.min) : (c - spec.min) / (spec.max - spec.min);
+  }
+  function normToValue(spec, n2) {
+    const c = Math.min(1, Math.max(0, n2));
+    return isLog(spec) ? spec.min * Math.pow(spec.max / spec.min, c) : spec.min + c * (spec.max - spec.min);
+  }
+  function formatValue(id, spec, v) {
+    switch (spec.unit) {
+      case "dB":
+        return `${v.toFixed(1)} dB`;
+      case ":1":
+        return `${v.toFixed(1)}:1`;
+      case "ms":
+        return v < 10 ? `${v.toFixed(1)} ms` : `${Math.round(v)} ms`;
+      case "Hz":
+        return `${Math.round(v)} Hz`;
+      case "%":
+        return `${Math.round(v)}%`;
+      default:
+        return v.toFixed(1);
+    }
+  }
+  var SWEEP = 270;
+  var START = 135;
+  var pt = (cx, cy, r, deg) => [cx + r * Math.cos(deg * Math.PI / 180), cy + r * Math.sin(deg * Math.PI / 180)];
+  var arc = (cx, cy, r, a0, a1) => {
+    if (a1 - a0 < 0.01) return "";
+    const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1);
+    return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  };
+  var AUTO_TEXT_MS = 250;
+  var altGuard = false;
+  function guardAltKey() {
+    if (altGuard) return;
+    altGuard = true;
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "Alt") e.preventDefault();
+    });
+  }
+  function createKnob({ id, label, spec: spec0, value, format: format0 = null, onChange: onChange0, size = "normal", auto = null, ring = false, tip = id }) {
+    guardAltKey();
+    let spec = spec0, onChange = onChange0;
+    const defaultFormat = (v) => formatValue(id, spec, v);
+    let format = format0 || defaultFormat;
+    const el2 = document.createElement("div");
+    el2.className = `knob ${size}`;
+    el2.dataset.knob = id;
+    el2.dataset.tooltip = tip;
+    el2.innerHTML = `<svg viewBox="0 0 64 64" role="slider" tabindex="0" aria-label="${label}">
+      <circle class="body" cx="32" cy="32" r="21"/>
+      ${ring ? '<line class="zero-tick"/><text class="zero-label" text-anchor="middle" dominant-baseline="middle">0</text>' : ""}
+      <path class="track" d="${arc(32, 32, 27, START, START + SWEEP)}"/>
+      <path class="fill"/><line class="ind" x1="32" y1="32" x2="32" y2="32"/></svg>
+    <div class="knob-value"></div>
+    <div class="knob-label">${label}</div>`;
+    if (ring) {
+      const cv = document.createElement("canvas");
+      cv.className = "ring-canvas";
+      cv.width = cv.height = 176;
+      el2.appendChild(cv);
+    }
+    const svg = el2.querySelector("svg"), fill = el2.querySelector(".fill"), ind = el2.querySelector(".ind"), val = el2.querySelector(".knob-value");
+    let current = value, autoOn = false, liveTarget = null, liveShown = null, raf = 0, textTimer = 0;
+    const shown = () => autoOn && liveShown !== null ? liveShown : current;
+    const render = () => {
+      const v = shown(), a = START + valueToNorm(spec, v) * SWEEP, [x0, y0] = pt(32, 32, 7, a), [x1, y1] = pt(32, 32, 17, a);
+      fill.setAttribute("d", arc(32, 32, 27, START, a));
+      ind.setAttribute("x1", x0);
+      ind.setAttribute("y1", y0);
+      ind.setAttribute("x2", x1);
+      ind.setAttribute("y2", y1);
+      if (!autoOn) val.textContent = format(v);
+      svg.setAttribute("aria-valuenow", String(v));
+    };
+    const set = (v, emit = true) => {
+      current = Math.min(spec.max, Math.max(spec.min, v));
+      if (spec.options) current = spec.options.reduce((a, o) => Math.abs(o - current) < Math.abs(a - current) ? o : a);
+      render();
+      if (emit && onChange) onChange(current);
+    };
+    const byNorm = (dn) => {
+      if (autoOn) return;
+      if (spec.options) {
+        const i = spec.options.indexOf(current);
+        set(spec.options[Math.max(0, Math.min(spec.options.length - 1, i + (dn > 0 ? 1 : -1)))]);
+        return;
+      }
+      set(normToValue(spec, valueToNorm(spec, current) + dn));
+    };
+    let drag = null;
+    svg.addEventListener("pointerdown", (e) => {
+      if (autoOn) return;
+      if (e.altKey) {
+        e.preventDefault();
+        set(spec.default);
+        return;
+      }
+      svg.setPointerCapture(e.pointerId);
+      drag = { y: e.clientY, n: valueToNorm(spec, current) };
+      el2.classList.add("dragging");
+    });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const k = e.shiftKey ? 1e3 : 200;
+      set(normToValue(spec, drag.n + (drag.y - e.clientY) / k));
+      if (e.shiftKey) {
+        drag.y = e.clientY;
+        drag.n = valueToNorm(spec, current);
+      }
+    });
+    const end = () => {
+      drag = null;
+      el2.classList.remove("dragging");
+    };
+    svg.addEventListener("pointerup", end);
+    svg.addEventListener("pointercancel", end);
+    svg.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      byNorm((e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 4e-3 : 0.02));
+    }, { passive: false });
+    svg.addEventListener("keydown", (e) => {
+      if (autoOn) return;
+      const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+      if (d) {
+        e.preventDefault();
+        byNorm(d * (e.shiftKey ? 2e-3 : 0.01));
+      }
+    });
+    if (ring) {
+      const ringA = (v) => START + valueToNorm(spec, v) * SWEEP, zeroA = ringA(0), tick2 = el2.querySelector(".zero-tick"), zl = el2.querySelector(".zero-label");
+      const [tx0, ty0] = pt(32, 32, 26, zeroA), [tx1, ty1] = pt(32, 32, 34, zeroA), [lx, ly] = pt(32, 32, 41, zeroA);
+      tick2.setAttribute("x1", tx0);
+      tick2.setAttribute("y1", ty0);
+      tick2.setAttribute("x2", tx1);
+      tick2.setAttribute("y2", ty1);
+      zl.setAttribute("x", lx);
+      zl.setAttribute("y", ly);
+      const cv = el2.querySelector(".ring-canvas"), cx = cv.getContext("2d"), C = cv.width / 2, R = 31.5 * 2.25, rad = (d) => d * Math.PI / 180;
+      const endA = ringA(spec.max);
+      const grad = cx.createConicGradient(rad(START), C, C);
+      for (let d = spec.min; d <= spec.max + 1e-3; d += 3) grad.addColorStop((ringA(d) - START) / 360, ringColor(d));
+      let lastEnd = null;
+      el2.setRing = (levelDb) => {
+        const on = levelDb !== null && Number.isFinite(levelDb);
+        const end2 = !on ? START : ringA(Math.max(spec.min, Math.min(levelDb, spec.max)));
+        if (lastEnd !== null && Math.abs(end2 - lastEnd) < 0.2) return;
+        lastEnd = end2;
+        cx.clearRect(0, 0, cv.width, cv.height);
+        cx.lineWidth = 3.6 * 2.25;
+        cx.strokeStyle = grad;
+        cx.lineCap = "butt";
+        cx.globalAlpha = 0.16;
+        cx.beginPath();
+        cx.arc(C, C, R, rad(START), rad(endA));
+        cx.stroke();
+        if (end2 > START + 0.1) {
+          cx.globalAlpha = 1;
+          cx.beginPath();
+          cx.arc(C, C, R, rad(START), rad(end2));
+          cx.stroke();
+        }
+        cx.globalAlpha = 1;
+      };
+      el2.setRing(null);
+    }
+    if (auto) {
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.id = auto.id;
+      pill.className = "auto-pill";
+      pill.textContent = "AUTO";
+      pill.setAttribute("aria-pressed", "false");
+      pill.dataset.tooltip = auto.tip;
+      pill.addEventListener("click", (e) => {
+        e.stopPropagation();
+        auto.onToggle();
+      });
+      attachTooltip(pill, TOOLTIPS[auto.tip] || "");
+      el2.appendChild(pill);
+      el2.setAuto = (v) => {
+        pill.setAttribute("aria-pressed", String(Boolean(v)));
+        setAutoMode(Boolean(v));
+      };
+    }
+    function tick() {
+      if (!autoOn || liveTarget === null) {
+        raf = 0;
+        return;
+      }
+      liveShown += (liveTarget - liveShown) * 0.25;
+      if (Math.abs(liveTarget - liveShown) < (spec.max - spec.min) * 1e-4) liveShown = liveTarget;
+      render();
+      raf = liveShown === liveTarget ? 0 : requestAnimationFrame(tick);
+    }
+    function setAutoMode(on) {
+      autoOn = on;
+      el2.classList.toggle("auto-on", on);
+      svg.setAttribute("aria-disabled", String(on));
+      svg.tabIndex = on ? -1 : 0;
+      if (on && liveTarget !== null && liveShown === null) liveShown = liveTarget;
+      if (!on) liveShown = null;
+      clearInterval(textTimer);
+      textTimer = 0;
+      if (on) textTimer = setInterval(() => {
+        val.textContent = format(shown());
+      }, AUTO_TEXT_MS);
+      render();
+      val.textContent = format(shown());
+    }
+    el2.setLive = (v) => {
+      if (v === null || !Number.isFinite(v)) return;
+      liveTarget = Math.min(spec.max, Math.max(spec.min, v));
+      if (liveShown === null) liveShown = liveTarget;
+      if (autoOn && !raf) raf = requestAnimationFrame(tick);
+    };
+    attachTooltip(el2, TOOLTIPS[tip] || "");
+    render();
+    el2.setValue = (v) => set(v, false);
+    el2.setSpec = ({ spec: s, format: f = null, onChange: oc, value: v }) => {
+      spec = s;
+      format = f || defaultFormat;
+      onChange = oc;
+      set(v, false);
+    };
+    Object.defineProperty(el2, "value", { get: () => current });
+    return el2;
+  }
+
+  // ui/theme.js
+  var COLORS = {
+    bg0: "hsl(265 18% 5%)",
+    bg1: "hsl(265 16% 8%)",
+    panel: "hsl(265 14% 11%)",
+    panelHi: "hsl(265 12% 15%)",
+    edge: "hsl(265 10% 22%)",
+    text: "hsl(0 0% 93%)",
+    textDim: "hsl(0 0% 62%)",
+    white: "hsl(0 0% 98%)",
+    grey1: "hsl(0 0% 40%)",
+    grey2: "hsl(0 0% 22%)",
+    grey3: "hsl(0 0% 14%)",
+    zoneBg: "hsl(0 0% 20% / 0.42)",
+    zoneFade: "hsl(0 0% 20% / 0.04)",
+    meltFrom: "hsl(265 18% 5% / 0)",
+    gridMinor: "hsl(265 12% 18% / 0.45)",
+    ghostFill: "hsl(0 0% 70% / 0.08)",
+    ghostLine: "hsl(0 0% 80% / 0.38)",
+    histFade: "hsl(0 0% 62% / 0.03)",
+    outFill: "hsl(272 7% 68% / 0.32)",
+    outFade: "hsl(272 7% 68% / 0.04)",
+    outLine: "hsl(274 75% 88%)",
+    rangeLine: "hsl(2 40% 56% / 0.42)",
+    rangeText: "hsl(2 40% 66% / 0.75)",
+    scBg: "hsl(0 0% 12%)",
+    accent: "hsl(272 86% 68%)",
+    accentHi: "hsl(280 92% 82%)",
+    accentLo: "hsl(266 62% 46%)",
+    glow: "hsl(274 92% 66% / 0.38)",
+    grid: "hsl(265 12% 18%)",
+    histFill: "hsl(0 0% 62% / 0.30)",
+    histLine: "hsl(0 0% 85% / 0.75)",
+    red: "hsl(2 82% 56%)",
+    redFill: "hsl(2 82% 56% / 0.25)",
+    redDim: "hsl(2 60% 38%)",
+    gr: "hsl(2 82% 56%)",
+    grFill: "hsl(2 82% 56% / 0.10)",
+    boost: "hsl(276 80% 88%)",
+    boostFill: "hsl(276 80% 80% / 0.28)",
+    curve: "hsl(278 74% 74%)",
+    thresholdLine: "hsl(0 0% 80% / 0.7)",
+    meterLow: "hsl(262 70% 40%)",
+    meterMid: "hsl(272 82% 58%)",
+    meterHi: "hsl(286 92% 80%)",
+    clip: "hsl(2 90% 58%)"
+  };
+  var kebab = (s) => s.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+  function applyThemeVars(root2 = document.documentElement) {
+    for (const [k, v] of Object.entries(COLORS)) root2.style.setProperty("--" + kebab(k), v);
+  }
+
+  // ui/perf.js
+  var interval = 14;
+  var setLowLatency = (on) => {
+    interval = on ? 31 : 14;
+  };
+  var frameInterval = () => interval;
+
+  // ui/controls.js
+  function createToggle({ id, label, tip, onClick }) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.id = id;
+    b.className = "toggle";
+    b.textContent = label;
+    b.setAttribute("aria-pressed", "false");
+    if (tip) {
+      b.dataset.tooltip = tip;
+      attachTooltip(b, TOOLTIPS[tip]);
+    }
+    b.addEventListener("click", () => onClick());
+    b.setPressed = (v) => b.setAttribute("aria-pressed", String(Boolean(v)));
+    return b;
+  }
+  function createMenu({ buttonId, menuId, itemClass, items, tip, onPick, radio = false, up = false }) {
+    const wrap = document.createElement("div");
+    wrap.className = up ? "menu up" : "menu";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = buttonId;
+    btn.className = "menu-btn";
+    const list = document.createElement("div");
+    list.id = menuId;
+    list.className = "menu-list";
+    list.setAttribute("role", "menu");
+    items.forEach((it, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = itemClass;
+      b.textContent = it.label;
+      b.setAttribute("role", radio ? "menuitemradio" : "menuitem");
+      if (radio) b.setAttribute("aria-checked", "false");
+      b.dataset.index = String(i);
+      b.dataset.id = it.id;
+      b.addEventListener("click", () => {
+        wrap.classList.remove("open");
+        onPick(it.id, i);
+      });
+      list.appendChild(b);
+    });
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      wrap.classList.toggle("open");
+    });
+    window.addEventListener("click", () => wrap.classList.remove("open"));
+    wrap.append(btn, list);
+    if (tip) {
+      btn.dataset.tooltip = tip;
+      attachTooltip(btn, TOOLTIPS[tip]);
+    }
+    wrap.setLabel = (t) => {
+      btn.textContent = t;
+    };
+    wrap.setActive = (id) => {
+      for (const b of list.children) b.setAttribute("aria-checked", String(b.dataset.id === String(id)));
+    };
+    return wrap;
+  }
+  function createSegmented({ id, label, options, labels = {}, tip, onPick }) {
+    const el2 = document.createElement("div");
+    el2.className = "seg";
+    el2.id = id;
+    el2.innerHTML = `<div class="knob-label">${label}</div><div class="seg-row"></div>`;
+    const row = el2.querySelector(".seg-row");
+    for (const o of options) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = labels[o] || String(o);
+      b.dataset.value = String(o);
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => onPick(o));
+      row.appendChild(b);
+    }
+    if (tip) {
+      el2.dataset.tooltip = tip;
+      attachTooltip(el2, TOOLTIPS[tip]);
+    }
+    el2.setValue = (v) => {
+      for (const b of row.children) b.setAttribute("aria-pressed", String(Number(b.dataset.value) === v));
+    };
+    return el2;
+  }
+
+  // ui/display-math.js
+  var HIT_R = 11;
+  var LINE_HIT = 8;
+  var KNEE_TAB_Y = 44;
+  function makeGeom(w, h, rangeDb) {
+    const gutter = 44, top2 = 56, bottom2 = 8;
+    const plotW = w - gutter;
+    return { w, h, rangeDb, gutter, top: top2, plotW, pxPerDb: (h - top2 - bottom2) / rangeDb, curveX0: 0, curveW: plotW * 0.55 };
+  }
+  var RANGES = [6, 12, 18, 24, 36, 48, 60];
+  var DEFAULT_RANGE_INDEX = 4;
+  var WINDOW_MIN_S = 2;
+  var WINDOW_MAX_S = 30;
+  var WINDOW_DEFAULT_S = 8;
+  function zoomWindow(seconds, deltaY) {
+    return clamp(seconds * Math.exp(deltaY * 15e-4), WINDOW_MIN_S, WINDOW_MAX_S);
+  }
+  function gridSteps(rangeDb) {
+    return { major: rangeDb <= 6 ? 1 : rangeDb <= 12 ? 2 : rangeDb <= 24 ? 3 : 6, minor: rangeDb <= 36 ? 1 : 2 };
+  }
+  var dbToY = (g, db2) => g.top + -db2 * g.pxPerDb;
+  var yToDb = (g, y) => -(y - g.top) / g.pxPerDb;
+  var inToX = (g, db2) => g.curveX0 + (db2 + g.rangeDb) / g.rangeDb * g.curveW;
+  var xToIn = (g, x) => (x - g.curveX0) / g.curveW * g.rangeDb - g.rangeDb;
+  var onPlotX = (g, x) => clamp(x, 4, g.plotW - 4);
+  var onPlotY = (g, y) => clamp(y, 6, g.h - 8);
+  function handles(g, p) {
+    const e = effectiveParams(p), out = (x) => x + computeGainDb(x, e);
+    const h = {
+      threshold: { x: onPlotX(g, inToX(g, p.threshold)), y: onPlotY(g, dbToY(g, p.threshold)) },
+      knee: { x: onPlotX(g, inToX(g, p.threshold + e.knee / 2)), y: g.top + KNEE_TAB_Y },
+      ratio: { x: inToX(g, 0), y: onPlotY(g, dbToY(g, out(0))) }
+    };
+    if (p.upward) {
+      const tup = p.threshold - p.upWindow;
+      h.upWindow = { x: onPlotX(g, inToX(g, tup)), y: onPlotY(g, dbToY(g, tup)) };
+    }
+    return h;
+  }
+  function dragTo(id, g, p, x, y) {
+    const db2 = yToDb(g, y);
+    switch (id) {
+      case "threshold":
+        return { threshold: clamp(db2, -60, 12) };
+      case "knee":
+        return { knee: clamp(2 * (xToIn(g, x) - p.threshold) - STYLES[p.style].kneeBias, 0, 30) };
+      case "ratio": {
+        const d = Math.min(db2, 0) - p.threshold;
+        return { ratio: d <= 0.05 ? 100 : clamp(-p.threshold / d, 1, 100) };
+      }
+      case "upWindow":
+        return { upWindow: clamp(p.threshold - db2, 0, 30) };
+      default:
+        return {};
+    }
+  }
+  function hitTest(g, p, x, y) {
+    const h = handles(g, p);
+    let best = null, bestD = HIT_R;
+    for (const id of ["knee", "ratio", "upWindow"]) {
+      if (!h[id]) continue;
+      if (id === "ratio" && p.threshold > -1) continue;
+      const d = Math.hypot(x - h[id].x, y - h[id].y);
+      if (d <= bestD) {
+        best = id;
+        bestD = d;
+      }
+    }
+    if (best) return best;
+    if (x >= 0 && x <= inToX(g, 0) + 16 && Math.abs(y - h.threshold.y) <= LINE_HIT) return "threshold";
+    return null;
+  }
+  function envelopePath(c, pts, plotW, h, fill) {
+    c.beginPath();
+    if (fill) {
+      c.moveTo(pts[0][0], h);
+      c.lineTo(pts[0][0], pts[0][1]);
+    } else c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) c.quadraticCurveTo(pts[i - 1][0], pts[i - 1][1], (pts[i - 1][0] + pts[i][0]) / 2, (pts[i - 1][1] + pts[i][1]) / 2);
+    c.lineTo(plotW, pts.at(-1)[1]);
+    if (fill) {
+      c.lineTo(plotW, h);
+      c.closePath();
+    }
+  }
+
+  // ui/display.js
+  var HIST = 2048;
+  var REPORT_S2 = 0.016;
+  var HEIGHT = 400;
+  function createDisplay({ getParams, setParam: setParam2 }) {
+    const el2 = document.createElement("div");
+    el2.className = "display-wrap";
+    el2.innerHTML = '<canvas class="display"></canvas>';
+    const canvas = el2.querySelector("canvas"), ctx = canvas.getContext("2d");
+    let rangeIdx = DEFAULT_RANGE_INDEX, g = makeGeom(800, HEIGHT, RANGES[rangeIdx]), hover = null, drag = null, effThr = null;
+    let dirty = true, lastDraw = 0, lastSig = "", lastPushT = 0, shift = 0;
+    let windowS = WINDOW_DEFAULT_S, shownS = WINDOW_DEFAULT_S;
+    const inDb = new Float32Array(HIST).fill(-120), outDb = new Float32Array(HIST).fill(-120), gain = new Float32Array(HIST);
+    let head = 0, N = Math.round(WINDOW_DEFAULT_S / REPORT_S2);
+    const scale = createMenu({
+      buttonId: "display-scale",
+      menuId: "display-scale-menu",
+      itemClass: "scale-item",
+      tip: "scale",
+      radio: true,
+      up: true,
+      items: RANGES.map((r) => ({ id: String(r), label: `${r} dB` })),
+      onPick: (id) => setRange(RANGES.indexOf(Number(id)))
+    });
+    scale.classList.add("scale-menu");
+    el2.appendChild(scale);
+    const setRange = (i) => {
+      dirty = true;
+      rangeIdx = i;
+      scale.setLabel(`${RANGES[i]} dB`);
+      scale.setActive(RANGES[i]);
+      g = makeGeom(g.w, g.h, RANGES[rangeIdx]);
+    };
+    setRange(rangeIdx);
+    canvas.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      dirty = true;
+      windowS = zoomWindow(windowS, ev.deltaY * (ev.deltaMode === 1 ? 16 : 1));
+    }, { passive: false });
+    const viewParams = () => {
+      const p = getParams();
+      return p.autoThreshold && effThr !== null ? { ...p, threshold: effThr } : p;
+    };
+    function pushMeters(m) {
+      dirty = true;
+      lastPushT = performance.now();
+      head = (head + 1) % HIST;
+      inDb[head] = m.inDb;
+      outDb[head] = Number.isFinite(m.outDb) ? m.outDb : -120;
+      gain[head] = m.gainDb;
+      if (Number.isFinite(m.thresholdDb)) effThr = m.thresholdDb;
+    }
+    function fit() {
+      const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth || 800;
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(HEIGHT * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(HEIGHT * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (g.w !== w) g = makeGeom(w, HEIGHT, RANGES[rangeIdx]);
+    }
+    const xAtIdx = (i) => i / (N - 1) * g.plotW - shift;
+    const ix = (i) => (head + 1 + (HIST - N) + i) % HIST;
+    const layer = document.createElement("canvas"), lctx = layer.getContext("2d");
+    let layerKey = "";
+    function paintStatic() {
+      const dpr = window.devicePixelRatio || 1, key = `${g.w}|${g.rangeDb}|${dpr}`;
+      if (key !== layerKey) {
+        layerKey = key;
+        layer.width = canvas.width;
+        layer.height = canvas.height;
+        const c = lctx;
+        c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const bg = c.createLinearGradient(0, 0, 0, g.h);
+        bg.addColorStop(0, COLORS.bg1);
+        bg.addColorStop(1, COLORS.bg0);
+        c.fillStyle = bg;
+        c.fillRect(0, 0, g.w, g.h);
+        const zx = inToX(g, 0) + 16, zg = c.createLinearGradient(0, g.top, 0, g.h);
+        zg.addColorStop(0, COLORS.zoneBg);
+        zg.addColorStop(1, COLORS.zoneFade);
+        c.fillStyle = zg;
+        c.fillRect(0, g.top, zx, g.h - g.top);
+        c.strokeStyle = COLORS.grey2;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(zx + 0.5, g.top);
+        c.lineTo(zx + 0.5, g.h);
+        c.stroke();
+        c.font = "10px system-ui, sans-serif";
+        c.textAlign = "left";
+        c.textBaseline = "middle";
+        const { major, minor } = gridSteps(g.rangeDb);
+        for (let db2 = 0; db2 >= -g.rangeDb; db2 -= minor) {
+          if (db2 % major === 0) continue;
+          const y = dbToY(g, db2);
+          c.strokeStyle = COLORS.gridMinor;
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(0, y + 0.5);
+          c.lineTo(g.plotW, y + 0.5);
+          c.stroke();
+        }
+        for (let db2 = 0; db2 >= -g.rangeDb; db2 -= major) {
+          const y = dbToY(g, db2);
+          c.strokeStyle = db2 === 0 ? COLORS.grey1 : COLORS.grid;
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(0, y + 0.5);
+          c.lineTo(g.plotW, y + 0.5);
+          c.stroke();
+          c.fillStyle = db2 === 0 ? COLORS.white : COLORS.textDim;
+          c.font = db2 === 0 ? "600 10px system-ui, sans-serif" : "10px system-ui, sans-serif";
+          c.fillText(db2 === 0 ? "0 dB" : String(db2), g.plotW + 8, y);
+        }
+        c.font = "10px system-ui, sans-serif";
+        c.fillStyle = COLORS.textDim;
+        for (const db2 of [3, 6]) {
+          const y = dbToY(g, db2);
+          if (y > 8) {
+            c.strokeStyle = COLORS.grid;
+            c.beginPath();
+            c.moveTo(0, y + 0.5);
+            c.lineTo(g.plotW, y + 0.5);
+            c.stroke();
+            c.fillText(`+${db2}`, g.plotW + 8, y);
+          }
+        }
+      }
+      ctx.drawImage(layer, 0, 0, g.w, g.h);
+    }
+    function render() {
+      fit();
+      shownS += (windowS - shownS) * 0.25;
+      if (Math.abs(windowS - shownS) < 1e-3) shownS = windowS;
+      N = Math.max(8, Math.min(HIST, Math.round(shownS / REPORT_S2)));
+      const step = Math.max(1, Math.floor(N / 600));
+      shift = Math.min(1, (performance.now() - lastPushT) / (REPORT_S2 * 1e3)) * (g.plotW / (N - 1)) * step;
+      const p = viewParams(), e = effectiveParams(p);
+      paintStatic();
+      const plus = (v) => dbToY(g, Math.max(-g.rangeDb, Math.min((g.top - 4) / g.pxPerDb, v)));
+      const envelope = (arr, fill, line, lw) => {
+        const pts = [];
+        for (let i = 0; i < N; i += step) pts.push([xAtIdx(i), plus(arr[ix(i)])]);
+        envelopePath(ctx, pts, g.plotW, g.h, true);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        envelopePath(ctx, pts, g.plotW, g.h, false);
+        ctx.strokeStyle = line;
+        ctx.lineWidth = lw;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+      };
+      const fade = (a0, a1) => {
+        const f = ctx.createLinearGradient(0, g.top, 0, g.h);
+        f.addColorStop(0, a0);
+        f.addColorStop(1, a1);
+        return f;
+      };
+      const zero = g.top;
+      const gy = (v) => v < 0 ? zero + Math.min(-v * g.pxPerDb, g.h - zero) : zero - Math.min(v * g.pxPerDb, zero - 4);
+      for (const sign of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(0, zero);
+        for (let i = 0; i < N; i += step) {
+          const v = gain[ix(i)];
+          ctx.lineTo(xAtIdx(i), gy(sign * v > 0 ? v : 0));
+        }
+        ctx.lineTo(g.plotW, zero);
+        ctx.closePath();
+        ctx.fillStyle = sign < 0 ? COLORS.grFill : COLORS.boostFill;
+        ctx.fill();
+      }
+      envelope(inDb, COLORS.ghostFill, COLORS.ghostLine, 1.75);
+      envelope(outDb, fade(COLORS.outFill, COLORS.outFade), COLORS.outLine, 1.5);
+      {
+        ctx.font = "600 9px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        let lx = g.plotW - 6;
+        for (const [label, color] of [["Reduction", COLORS.red], ["Output", COLORS.outLine], ["Input", COLORS.ghostLine]]) {
+          const w = ctx.measureText(label).width;
+          lx -= w;
+          ctx.fillStyle = COLORS.textDim;
+          ctx.fillText(label, lx, 12);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(lx - 8, 12, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+          lx -= 24;
+        }
+      }
+      const grPath = new Path2D(), boostPath = new Path2D();
+      for (let i = step; i < N; i += step) {
+        const a = gain[ix(i - step)], b = gain[ix(i)], path = (a + b) / 2 > 0.05 ? boostPath : grPath;
+        path.moveTo(xAtIdx(i - step), gy(a));
+        path.lineTo(xAtIdx(i), gy(b));
+      }
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = COLORS.gr;
+      ctx.stroke(grPath);
+      ctx.strokeStyle = COLORS.boost;
+      ctx.stroke(boostPath);
+      if (p.range < 59.5) {
+        const ry = zero + p.range * g.pxPerDb;
+        if (ry < g.h - 2) {
+          ctx.setLineDash([6, 6]);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = COLORS.rangeLine;
+          ctx.beginPath();
+          ctx.moveTo(0, ry + 0.5);
+          ctx.lineTo(g.plotW, ry + 0.5);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = COLORS.rangeText;
+          ctx.font = "600 9px system-ui, sans-serif";
+          ctx.textAlign = "right";
+          ctx.fillText(`RANGE -${Math.round(p.range)} dB`, g.plotW - 6, ry - 7);
+          ctx.textAlign = "left";
+        }
+      }
+      const melt = ctx.createLinearGradient(0, g.h - 110, 0, g.h);
+      melt.addColorStop(0, COLORS.meltFrom);
+      melt.addColorStop(1, COLORS.bg0);
+      ctx.fillStyle = melt;
+      ctx.fillRect(0, g.h - 110, g.w, 110);
+      const outAt = (x) => Math.max(-g.rangeDb, Math.min((g.top - 4) / g.pxPerDb, x + computeGainDb(x, e)));
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = COLORS.edge;
+      ctx.beginPath();
+      ctx.moveTo(inToX(g, -g.rangeDb), dbToY(g, -g.rangeDb));
+      ctx.lineTo(inToX(g, 0), dbToY(g, 0));
+      ctx.stroke();
+      if (p.range < 59.5) {
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = COLORS.rangeLine;
+        ctx.beginPath();
+        ctx.moveTo(inToX(g, -g.rangeDb), dbToY(g, -g.rangeDb - p.range));
+        ctx.lineTo(inToX(g, 0), dbToY(g, -p.range));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const lifts = p.upward && p.upMaxBoost > 0.05;
+      if (p.upward && p.upFloor >= -g.rangeDb) {
+        ctx.setLineDash([2, 4]);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = COLORS.boost;
+        ctx.beginPath();
+        ctx.moveTo(inToX(g, p.upFloor), g.top);
+        ctx.lineTo(inToX(g, p.upFloor), g.h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (lifts) {
+        ctx.beginPath();
+        let started = false;
+        for (let x = -g.rangeDb; x <= 0; x += 0.5) {
+          if (computeGainDb(x, e) > 0.05) {
+            const X = inToX(g, x), Y = dbToY(g, outAt(x));
+            started ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+            started = true;
+          }
+        }
+        for (let x = 0; x >= -g.rangeDb; x -= 0.5) if (computeGainDb(x, e) > 0.05) ctx.lineTo(inToX(g, x), dbToY(g, x));
+        ctx.closePath();
+        ctx.fillStyle = COLORS.boostFill;
+        ctx.fill();
+      }
+      const curve = new Path2D();
+      for (let x = -g.rangeDb; x <= 0; x += 0.5) {
+        const X = inToX(g, x), Y = dbToY(g, outAt(x));
+        x === -g.rangeDb ? curve.moveTo(X, Y) : curve.lineTo(X, Y);
+      }
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = COLORS.glow;
+      ctx.stroke(curve);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = COLORS.curve;
+      ctx.stroke(curve);
+      if (lifts) {
+        ctx.beginPath();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = COLORS.boost;
+        let on = false;
+        for (let x = -g.rangeDb; x <= 0; x += 0.5) {
+          if (computeGainDb(x, e) > 0.05) {
+            const X = inToX(g, x), Y = dbToY(g, outAt(x));
+            on ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+            on = true;
+          } else if (on) break;
+        }
+        ctx.stroke();
+      }
+      const zoneW = inToX(g, 0) + 16;
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = COLORS.thresholdLine;
+      const ty = dbToY(g, p.threshold);
+      ctx.beginPath();
+      ctx.moveTo(0, ty);
+      ctx.lineTo(zoneW, ty);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(inToX(g, p.threshold), g.top);
+      ctx.lineTo(inToX(g, p.threshold), g.h);
+      ctx.stroke();
+      if (p.upward) {
+        const label = (text, y, below) => {
+          ctx.setLineDash([]);
+          ctx.fillStyle = COLORS.boost;
+          ctx.font = "600 9px system-ui, sans-serif";
+          ctx.textAlign = "right";
+          ctx.fillText(text, g.plotW - 6, below ? y + 10 : y - 7);
+          ctx.textAlign = "left";
+        };
+        const uy = Math.min(dbToY(g, p.threshold - p.upWindow), g.h - 8);
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, uy);
+        ctx.lineTo(g.plotW, uy);
+        ctx.stroke();
+        label(`WINDOW ${Math.round(p.upWindow)} dB`, uy, false);
+        if (p.upFloor >= -g.rangeDb && dbToY(g, p.upFloor) < g.h - 6) {
+          const fy = dbToY(g, p.upFloor);
+          ctx.setLineDash([2, 4]);
+          ctx.strokeStyle = COLORS.boost;
+          ctx.beginPath();
+          ctx.moveTo(0, fy + 0.5);
+          ctx.lineTo(g.plotW, fy + 0.5);
+          ctx.stroke();
+          label(`FLOOR ${Math.round(p.upFloor)} dB`, fy, true);
+        }
+      }
+      ctx.setLineDash([]);
+      if (p.upward) {
+        const by = Math.max(11, g.top - p.upMaxBoost * g.pxPerDb), clamped = g.top - p.upMaxBoost * g.pxPerDb < 11, bx = g.plotW + 3, bw = g.gutter - 6;
+        ctx.strokeStyle = COLORS.boost;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(g.plotW, by + 0.5);
+        ctx.lineTo(bx + 3, by + 0.5);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.accentLo;
+        ctx.beginPath();
+        ctx.roundRect(bx + 3, by - 8, bw - 3, 16, 4);
+        ctx.fill();
+        ctx.fillStyle = COLORS.text;
+        ctx.font = "600 9px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${clamped ? "\u25B2" : ""}+${Math.round(p.upMaxBoost)}`, bx + 3 + (bw - 3) / 2, by);
+        ctx.textAlign = "left";
+      }
+      const h = handles(g, p), active = drag ? drag.id : hover;
+      const dot = (id, x, y) => {
+        ctx.beginPath();
+        ctx.arc(x, y, id === active ? 10 : 8, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.glow;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, id === active ? 6.5 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = id === active ? COLORS.accentHi : COLORS.accent;
+        ctx.fill();
+      };
+      dot("threshold", h.threshold.x, h.threshold.y);
+      if (p.threshold <= -1) dot("ratio", h.ratio.x, h.ratio.y);
+      if (h.upWindow) dot("upWindow", h.upWindow.x, h.upWindow.y);
+      ctx.fillStyle = active === "knee" ? COLORS.accentHi : COLORS.accentLo;
+      ctx.beginPath();
+      ctx.roundRect(h.knee.x - 20, h.knee.y - 9, 40, 18, 5);
+      ctx.fill();
+      ctx.fillStyle = COLORS.text;
+      ctx.textAlign = "center";
+      ctx.font = "600 9px system-ui, sans-serif";
+      ctx.fillText("KNEE", h.knee.x, h.knee.y);
+    }
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const sig = JSON.stringify(getParams());
+      if (sig !== lastSig) {
+        lastSig = sig;
+        dirty = true;
+      }
+      if (shownS !== windowS || canvas.clientWidth !== g.w || performance.now() - lastPushT < 100) dirty = true;
+      if (!dirty || now - lastDraw < frameInterval()) return;
+      dirty = false;
+      lastDraw = now;
+      render();
+    }
+    const pos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    };
+    canvas.addEventListener("pointermove", (ev) => {
+      const [x, y] = pos(ev);
+      dirty = true;
+      if (drag) {
+        const view = viewParams(), off = view.threshold - getParams().threshold;
+        for (const [k, v] of Object.entries(dragTo(drag.id, g, view, x, y))) setParam2(k, k === "threshold" ? v - off : v);
+        return;
+      }
+      hover = hitTest(g, viewParams(), x, y);
+      canvas.style.cursor = hover === "knee" ? "ew-resize" : hover ? "ns-resize" : "default";
+    });
+    canvas.addEventListener("pointerdown", (ev) => {
+      const [x, y] = pos(ev), id = hitTest(g, viewParams(), x, y);
+      if (!id) return;
+      canvas.setPointerCapture(ev.pointerId);
+      drag = { id };
+      dirty = true;
+    });
+    const end = () => {
+      drag = null;
+      dirty = true;
+    };
+    canvas.addEventListener("dblclick", (ev) => {
+      const [x, y] = pos(ev);
+      if (!hitTest(g, viewParams(), x, y)) {
+        windowS = WINDOW_DEFAULT_S;
+        setRange(DEFAULT_RANGE_INDEX);
+        dirty = true;
+      }
+    });
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointercancel", end);
+    canvas.addEventListener("pointerleave", () => {
+      if (!drag) hover = null;
+      dirty = true;
+    });
+    requestAnimationFrame(frame);
+    return {
+      el: el2,
+      pushMeters,
+      windowSeconds: () => windowS,
+      /* 1:1: back to the default time zoom and dB scale */
+      resetView() {
+        windowS = WINDOW_DEFAULT_S;
+        setRange(DEFAULT_RANGE_INDEX);
+        dirty = true;
+      },
+      geom: () => ({ ...g }),
+      handles: () => handles(g, viewParams()),
+      drawnThreshold: () => viewParams().threshold
+    };
+  }
+
+  // ui/meters.js
+  var W = 64;
+  var H = 400;
+  var TOP = 36;
+  var GR_RANGE = 24;
+  var OUT_RANGE = 72;
+  var CLIP_DB = -0.1;
+  var CLIP_HOLD_MS = 1500;
+  var READOUT_MS = 250;
+  function formatGr(db2) {
+    return Math.abs(db2) < 0.05 ? "0.0" : db2 < 0 ? db2.toFixed(1) : "+" + db2.toFixed(1);
+  }
+  function formatOut(db2) {
+    return db2 < -99 ? "-inf" : db2.toFixed(1);
+  }
+  function createReadout(interval2, pick, empty) {
+    let shown = null, last = 0, acc = empty;
+    return {
+      push(v, now) {
+        acc = pick(acc, v);
+        if (shown === null) {
+          shown = v;
+          last = now;
+          acc = empty;
+        } else if (now - last >= interval2) {
+          shown = acc;
+          last = now;
+          acc = empty;
+        }
+        return shown;
+      }
+    };
+  }
+  function createMeters() {
+    const el2 = document.createElement("div");
+    el2.className = "meter-col";
+    el2.innerHTML = '<div class="meter-nums"><span id="gr-readout" class="gr-num">0.0</span><span id="out-readout" class="out-num">-inf</span></div>';
+    const canvas = document.createElement("canvas");
+    canvas.className = "meters";
+    el2.appendChild(canvas);
+    const grNum = el2.querySelector("#gr-readout"), outNum = el2.querySelector("#out-readout");
+    const ctx = canvas.getContext("2d");
+    let gain = 0, out = -120, peak = -120, peakAt = 0, clipAt = -1e9, shownGr = "", shownOut = "";
+    const grRead = createReadout(READOUT_MS, Math.min, 1e9), outRead = createReadout(READOUT_MS, Math.max, -1e9);
+    let dirty = true, lastDraw = 0, lastClip = false;
+    function push(m) {
+      dirty = true;
+      gain = m.gainDb;
+      out = m.outPeakDb;
+      const now = performance.now();
+      if (out > peak || now - peakAt > 1200) {
+        peak = out;
+        peakAt = now;
+      }
+      if (out > CLIP_DB) clipAt = now;
+      const g = formatGr(grRead.push(gain, now)), o = formatOut(outRead.push(out, now));
+      if (g !== shownGr) {
+        grNum.textContent = shownGr = g;
+      }
+      if (o !== shownOut) {
+        outNum.textContent = shownOut = o;
+      }
+    }
+    function draw(now) {
+      requestAnimationFrame(draw);
+      const clippingNow = performance.now() - clipAt < CLIP_HOLD_MS;
+      if (!dirty && clippingNow === lastClip) return;
+      if (now - lastDraw < frameInterval()) return;
+      dirty = false;
+      lastDraw = now;
+      lastClip = clippingNow;
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== W * dpr) {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = COLORS.bg1;
+      ctx.fillRect(0, 0, W, H);
+      const barH = H - TOP - 20, bx = 10, ox = 38;
+      const gr = Math.max(0, -gain) / GR_RANGE * barH;
+      const grad = ctx.createLinearGradient(0, TOP, 0, TOP + barH);
+      grad.addColorStop(0, COLORS.red);
+      grad.addColorStop(1, COLORS.redDim);
+      ctx.fillStyle = COLORS.grid;
+      ctx.fillRect(bx, TOP, 16, barH);
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, TOP, 16, Math.min(gr, barH));
+      if (gain > 0.05) {
+        const bh = Math.min(gain / GR_RANGE * barH, TOP - 4);
+        ctx.fillStyle = COLORS.boost;
+        ctx.fillRect(bx, TOP - bh, 16, bh);
+      }
+      const lv = (db2) => Math.max(0, Math.min(1, (db2 + OUT_RANGE) / OUT_RANGE)) * barH;
+      const g2 = ctx.createLinearGradient(0, TOP + barH, 0, TOP);
+      for (let db2 = -OUT_RANGE; db2 <= 0; db2 += 6) g2.addColorStop((db2 + OUT_RANGE) / OUT_RANGE, ringColor(db2));
+      ctx.fillStyle = COLORS.grid;
+      ctx.fillRect(ox, TOP, 16, barH);
+      ctx.fillStyle = g2;
+      ctx.fillRect(ox, TOP + barH - lv(out), 16, lv(out));
+      ctx.fillStyle = COLORS.white;
+      ctx.fillRect(ox, TOP + barH - lv(peak) - 1, 16, 2);
+      const clipping = performance.now() - clipAt < CLIP_HOLD_MS;
+      ctx.fillStyle = clipping ? COLORS.clip : COLORS.grey2;
+      ctx.fillRect(ox, TOP - 12, 16, 8);
+      ctx.fillStyle = COLORS.textDim;
+      ctx.font = "9px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("GR", bx + 8, H - 6);
+      ctx.fillText("OUT", ox + 8, H - 6);
+    }
+    requestAnimationFrame(draw);
+    return { el: el2, push };
+  }
+
+  // ui/accordion.js
+  function createAccordion({ id, bodyId, title, headerExtra = null, open = false, onToggle = () => {
+  } }) {
+    const el2 = document.createElement("section");
+    el2.className = "acc";
+    el2.id = id;
+    el2.innerHTML = `<div class="acc-head"><button type="button" class="acc-btn" id="${id}-toggle" aria-controls="${bodyId}"><span class="chev" aria-hidden="true"></span><span class="acc-title">${title}</span></button></div>
+    <div class="acc-wrap"><div class="acc-body" id="${bodyId}"><div class="acc-inner"></div></div></div>`;
+    const btn = el2.querySelector(".acc-btn"), body = el2.querySelector(".acc-body");
+    if (headerExtra) el2.querySelector(".acc-head").appendChild(headerExtra);
+    const setOpen = (v) => {
+      el2.classList.toggle("open", v);
+      btn.setAttribute("aria-expanded", String(v));
+      body.inert = !v;
+      body.setAttribute("aria-hidden", String(!v));
+    };
+    btn.addEventListener("click", () => {
+      const v = !el2.classList.contains("open");
+      setOpen(v);
+      onToggle(v);
+    });
+    el2.setOpen = setOpen;
+    el2.inner = el2.querySelector(".acc-inner");
+    setOpen(open);
+    return el2;
+  }
+
+  // ui/sc-math.js
+  var CROSS = 1.25;
+  var HIT_R2 = 12;
+  var F_MIN = 20;
+  var F_MAX = 2e4;
+  var GAIN_RANGE = 24;
+  function makeScGeom(w, h) {
+    return { w, h, padL: 10, padR: 10, plotW: w - 20 };
+  }
+  var freqToX = (g, f) => g.padL + Math.log10(f / F_MIN) / Math.log10(F_MAX / F_MIN) * g.plotW;
+  var xToFreq = (g, x) => F_MIN * Math.pow(F_MAX / F_MIN, (x - g.padL) / g.plotW);
+  var LIN = 12;
+  var BEND = 8;
+  var squash = (db2) => {
+    const a = Math.abs(db2);
+    return a <= LIN ? db2 : Math.sign(db2) * (LIN + BEND * Math.log(1 + (a - LIN) / BEND));
+  };
+  var unsquash = (v) => {
+    const a = Math.abs(v);
+    return a <= LIN ? v : Math.sign(v) * (LIN + BEND * (Math.exp((a - LIN) / BEND) - 1));
+  };
+  var gainToY = (g, db2) => g.h / 2 - squash(db2) / GAIN_RANGE * (g.h / 2 - 12);
+  var yToGain = (g, y) => unsquash((g.h / 2 - y) / (g.h / 2 - 12) * GAIN_RANGE);
+  var hpS = makeStages();
+  var lpS = makeStages();
+  var bp = new Biquad();
+  function makeResponse(p, sr) {
+    const hpN = p.sidechainHpf > 20.5 ? configureCut(hpS, "hp", p.sidechainHpf, sr, p.scHpfSlope) : 0;
+    const lpN = p.scLpf < 19999 ? configureCut(lpS, "lp", p.scLpf, sr, p.scLpfSlope) : 0;
+    const band = Math.abs(p.scBandGain) > 0.05;
+    if (band) bp.setPeaking(p.scBandFreq, p.scBandGain, p.scBandQ, sr);
+    return (f) => {
+      let db2 = 0;
+      for (let k = 0; k < hpN; k++) db2 += hpS[k].magnitudeDb(f, sr);
+      for (let k = 0; k < lpN; k++) db2 += lpS[k].magnitudeDb(f, sr);
+      if (band) db2 += bp.magnitudeDb(f, sr);
+      return db2;
+    };
+  }
+  var responseDb = (p, f, sr) => makeResponse(p, sr)(f);
+  function scNodes(g, p, sr = 48e3) {
+    return {
+      hpf: { x: freqToX(g, p.sidechainHpf), y: gainToY(g, responseDb(p, p.sidechainHpf, sr)) },
+      band: { x: freqToX(g, p.scBandFreq), y: gainToY(g, p.scBandGain) },
+      lpf: { x: freqToX(g, p.scLpf), y: gainToY(g, responseDb(p, Math.min(p.scLpf, sr * 0.45), sr)) }
+    };
+  }
+  function scHit(g, p, x, y, sr = 48e3) {
+    const n2 = scNodes(g, p, sr);
+    let best = null, bestD = HIT_R2;
+    for (const id of ["band", "hpf", "lpf"]) {
+      const d = Math.hypot(x - n2[id].x, y - n2[id].y);
+      if (d <= bestD) {
+        best = id;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+  function scDragTo(id, g, p, x, y) {
+    const f = xToFreq(g, x);
+    switch (id) {
+      // both filters can be dragged along the whole graph; they stop short of each other (HPF below LPF, with a little distance)
+      case "hpf":
+        return { sidechainHpf: clamp(f, 20, p.scLpf < 19999 ? Math.max(20, p.scLpf / CROSS) : 2e4) };
+      case "lpf":
+        return { scLpf: f >= 18e3 ? 2e4 : clamp(f, p.sidechainHpf > 20.5 ? Math.min(2e4, p.sidechainHpf * CROSS) : 20, 2e4) };
+      case "band":
+        return { scBandFreq: clamp(f, 60, 12e3), scBandGain: clamp(yToGain(g, y), -12, 12) };
+      default:
+        return {};
+    }
+  }
+  var scWheel = (p, deltaY) => ({ scBandQ: clamp(p.scBandQ * (deltaY < 0 ? 1.15 : 1 / 1.15), 0.3, 8) });
+  function scWheelNode(id, p, deltaY) {
+    const step = (cur) => SLOPE_OPTIONS[clamp(SLOPE_OPTIONS.indexOf(cur) + (deltaY < 0 ? 1 : -1), 0, SLOPE_OPTIONS.length - 1)];
+    if (id === "hpf") return { scHpfSlope: step(p.scHpfSlope) };
+    if (id === "lpf") return { scLpfSlope: step(p.scLpfSlope) };
+    return scWheel(p, deltaY);
+  }
+  function scReset(id) {
+    if (id === "hpf") return { sidechainHpf: 20, scHpfSlope: 12 };
+    if (id === "lpf") return { scLpf: 2e4, scLpfSlope: 12 };
+    if (id === "band") return { scBandGain: 0, scBandFreq: 1e3, scBandQ: 1 };
+    return {};
+  }
+  function spectrumLevel(data, nyq, fLo, fHi) {
+    const bins = data.length, at = (i) => Math.max(-100, data[clamp(i, 0, bins - 1)]);
+    const b0 = fLo / nyq * bins, b1 = fHi / nyq * bins;
+    if (b1 - b0 <= 1) {
+      const bc = (b0 + b1) / 2, i = Math.floor(bc), t = bc - i;
+      return at(i) + (at(i + 1) - at(i)) * t;
+    }
+    let m = -100;
+    for (let k = Math.floor(b0); k <= Math.ceil(b1); k++) m = Math.max(m, at(k));
+    return m;
+  }
+
+  // ui/sc-eq.js
+  var HEIGHT2 = 200;
+  var fmtF = (f) => f >= 1e3 ? `${(f / 1e3).toFixed(1)} kHz` : `${Math.round(f)} Hz`;
+  function createScEq({ getParams, setParam: setParam2, getSpectrum, getSampleRate = () => 48e3, isVisible = () => true }) {
+    const canvas = document.createElement("canvas");
+    canvas.className = "sc-eq";
+    const ctx = canvas.getContext("2d");
+    canvas.dataset.tooltip = "scSlope";
+    attachTooltip(canvas, TOOLTIPS.scSlope);
+    let g = makeScGeom(640, HEIGHT2), hover = null, drag = null, lastSlopeWheel = -1e9;
+    function fit() {
+      const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth || 640;
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(HEIGHT2 * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(HEIGHT2 * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (g.w !== w) g = makeScGeom(w, HEIGHT2);
+    }
+    const syncGeom = () => {
+      const w = canvas.clientWidth || 640;
+      if (g.w !== w) g = makeScGeom(w, HEIGHT2);
+    };
+    let spec = null;
+    function render() {
+      fit();
+      const p = getParams(), sr = getSampleRate(), resp = makeResponse(p, sr);
+      ctx.clearRect(0, 0, g.w, g.h);
+      ctx.fillStyle = COLORS.scBg;
+      ctx.fillRect(0, 0, g.w, g.h);
+      ctx.strokeStyle = COLORS.grey2;
+      ctx.lineWidth = 1;
+      ctx.font = "9px system-ui, sans-serif";
+      ctx.textBaseline = "top";
+      ctx.textAlign = "center";
+      for (const f of [20, 50, 100, 200, 500, 1e3, 2e3, 5e3, 1e4, 2e4]) {
+        const x = Math.round(freqToX(g, f)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, g.h);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.grey1;
+        ctx.fillText(f >= 1e3 ? `${f / 1e3}k` : String(f), x, g.h - 11);
+      }
+      for (const db2 of [-12, 0, 12]) {
+        const y = Math.round(gainToY(g, db2)) + 0.5;
+        ctx.strokeStyle = db2 === 0 ? COLORS.grey1 : COLORS.grey2;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(g.w, y);
+        ctx.stroke();
+      }
+      if (spec) {
+        const { data, sr: ssr } = spec, nyq = ssr / 2, bottom2 = g.h - 14, span2 = g.h - 30, xs = [], raw = [], filt = [];
+        for (let x = g.padL; x <= g.w - g.padR; x += 2) {
+          const lvl = spectrumLevel(data, nyq, xToFreq(g, x - 1), xToFreq(g, x + 1));
+          xs.push(x);
+          raw.push(lvl);
+          filt.push(lvl + resp(xToFreq(g, x)));
+        }
+        const yOf = (m) => bottom2 - Math.max(0, Math.min(1, (m + 100) / 100)) * span2;
+        const smooth = (arr) => arr.map((v, i) => (arr[Math.max(0, i - 1)] + 2 * v + arr[Math.min(arr.length - 1, i + 1)]) / 4);
+        const area = (arr, fill, line) => {
+          const ys = arr.map(yOf);
+          ctx.beginPath();
+          ctx.moveTo(xs[0], bottom2);
+          ctx.lineTo(xs[0], ys[0]);
+          for (let i = 1; i < xs.length; i++) ctx.quadraticCurveTo(xs[i - 1], ys[i - 1], (xs[i - 1] + xs[i]) / 2, (ys[i - 1] + ys[i]) / 2);
+          ctx.lineTo(xs.at(-1), ys.at(-1));
+          ctx.lineTo(xs.at(-1), bottom2);
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+          if (line) {
+            ctx.strokeStyle = line;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        };
+        area(smooth(raw), COLORS.ghostFill, COLORS.ghostLine);
+        area(smooth(filt), COLORS.histFill, null);
+      }
+      const curve = new Path2D();
+      for (let x = g.padL; x <= g.w - g.padR; x += 2) {
+        const y = gainToY(g, resp(xToFreq(g, x)));
+        x === g.padL ? curve.moveTo(x, y) : curve.lineTo(x, y);
+      }
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = COLORS.glow;
+      ctx.stroke(curve);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = COLORS.curve;
+      ctx.stroke(curve);
+      const n2 = scNodes(g, p, sr), active = drag ? drag.id : hover;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.font = "600 9px system-ui, sans-serif";
+      for (const [id, label0] of [["hpf", "HPF"], ["band", "BAND"], ["lpf", "LPF"]]) {
+        const label = id === "hpf" ? p.sidechainHpf > 20.5 ? `HPF ${p.scHpfSlope}` : "HPF" : id === "lpf" ? p.scLpf < 19999 ? `LPF ${p.scLpfSlope}` : "LPF" : label0;
+        ctx.beginPath();
+        ctx.arc(n2[id].x, n2[id].y, id === active ? 11 : 9, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.glow;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(n2[id].x, n2[id].y, id === active ? 7 : 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = id === active ? COLORS.accentHi : COLORS.accent;
+        ctx.fill();
+        ctx.fillStyle = COLORS.text;
+        ctx.fillText(label, Math.min(g.w - 14, Math.max(14, n2[id].x)), n2[id].y - 9);
+      }
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = COLORS.textDim;
+      ctx.font = "10px system-ui, sans-serif";
+      const hpf = p.sidechainHpf > 20.5 ? `${fmtF(p.sidechainHpf)} ${p.scHpfSlope} dB/oct` : "off", lpf = p.scLpf < 19999 ? `${fmtF(p.scLpf)} ${p.scLpfSlope} dB/oct` : "off";
+      const band = Math.abs(p.scBandGain) > 0.05 ? `${fmtF(p.scBandFreq)} ${p.scBandGain > 0 ? "+" : ""}${p.scBandGain.toFixed(1)} dB Q${p.scBandQ.toFixed(1)}` : "off";
+      ctx.fillText(`HPF ${hpf}   BAND ${band}   LPF ${lpf}`, 10, 6);
+      ctx.textAlign = "right";
+      ctx.fillText("wheel on HPF/LPF point = slope (dB/oct), on BAND = Q   Alt+click = reset", g.w - 10, 6);
+    }
+    let dirty = true, lastDraw = 0, lastSig = "", wasVisible = false;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const vis = isVisible();
+      if (!vis) {
+        wasVisible = false;
+        return;
+      }
+      if (!wasVisible) {
+        wasVisible = true;
+        dirty = true;
+      }
+      spec = getSpectrum();
+      const sig = JSON.stringify(getParams());
+      if (sig !== lastSig) {
+        lastSig = sig;
+        dirty = true;
+      }
+      if (spec || canvas.clientWidth !== g.w) dirty = true;
+      if (!dirty || now - lastDraw < frameInterval()) return;
+      dirty = false;
+      lastDraw = now;
+      render();
+    }
+    const pos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    };
+    const apply = (partial) => {
+      for (const [k, v] of Object.entries(partial)) setParam2(k, v);
+    };
+    canvas.addEventListener("pointermove", (ev) => {
+      const [x, y] = pos(ev);
+      dirty = true;
+      if (drag) {
+        apply(scDragTo(drag.id, g, getParams(), x, y));
+        return;
+      }
+      hover = scHit(g, getParams(), x, y, getSampleRate());
+      canvas.style.cursor = hover ? hover === "band" ? "move" : "ew-resize" : "default";
+    });
+    canvas.addEventListener("pointerdown", (ev) => {
+      const [x, y] = pos(ev), id = scHit(g, getParams(), x, y, getSampleRate());
+      if (!id) return;
+      if (ev.altKey) {
+        ev.preventDefault();
+        apply(scReset(id));
+        return;
+      }
+      canvas.setPointerCapture(ev.pointerId);
+      drag = { id };
+    });
+    const end = () => {
+      drag = null;
+    };
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointercancel", end);
+    canvas.addEventListener("pointerleave", () => {
+      if (!drag) hover = null;
+    });
+    canvas.addEventListener("wheel", (ev) => {
+      const [x, y] = pos(ev);
+      const id = scHit(g, getParams(), x, y, getSampleRate());
+      if (!id) return;
+      ev.preventDefault();
+      const now = performance.now();
+      if (id !== "band" && now - lastSlopeWheel < 140) return;
+      if (id !== "band") lastSlopeWheel = now;
+      apply(scWheelNode(id, getParams(), ev.deltaY));
+    }, { passive: false });
+    requestAnimationFrame(frame);
+    return { el: canvas, geom: () => {
+      syncGeom();
+      return { ...g };
+    }, nodes: () => {
+      syncGeom();
+      return scNodes(g, getParams(), getSampleRate());
+    } };
+  }
+
+  // dsp/presets.js
+  var P = (name, style, threshold, ratio, knee, attack, release, extra = {}) => ({ name, params: { style, threshold, ratio, knee, attack, release, mix: 100, upward: false, ...extra } });
+  var PRESETS = [
+    P("Vocal Control", "vocal", -24, 3, 12, 10, 120),
+    P("Vocal Smash", "vocal", -30, 6, 6, 5, 80),
+    P("Kick Punch", "punch", -20, 5, 4, 30, 60),
+    P("Snare Crack", "classic", -22, 6, 3, 5, 100),
+    P("Bass Tighten", "clean", -26, 4, 8, 15, 100, { sidechainHpf: 80 }),
+    P("Drum Bus Glue", "bus", -18, 2, 8, 30, 150),
+    P("Parallel Drum Crush", "punch", -36, 10, 2, 1, 120, { mix: 35 }),
+    P("Mix Bus Glue", "bus", -14, 1.5, 14, 30, 200),
+    P("Mastering Gentle", "clean", -16, 1.3, 20, 40, 300, { lookahead: 2 }),
+    P("Acoustic Guitar Even", "opto", -26, 3, 14, 20, 150)
+  ];
+
+  // ui/store.js
+  var COALESCE_MS = 600;
+  var MAX_UNDO = 100;
+  function createStore({ now = () => performance.now(), onChange = () => {
+  } } = {}) {
+    let params = defaults();
+    let undoStack = [], redoStack = [], lastKey = null, lastT = -1e9;
+    let presetIndex = -1, modified = false;
+    const slots = { A: null, B: null };
+    let current = "A";
+    const diff = (a, b) => Object.keys(a).filter((k) => a[k] !== b[k]);
+    const apply = (next2) => {
+      const keys = diff(params, next2);
+      params = next2;
+      if (keys.length) onChange({ ...params }, keys);
+      return keys;
+    };
+    const record = (key) => {
+      const t = now();
+      if (key === lastKey && t - lastT < COALESCE_MS) {
+        lastT = t;
+        return;
+      }
+      undoStack.push({ ...params });
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      redoStack = [];
+      lastKey = key;
+      lastT = t;
+    };
+    const store2 = {
+      get params() {
+        return { ...params };
+      },
+      get presetIndex() {
+        return presetIndex;
+      },
+      get presetName() {
+        return presetIndex >= 0 ? PRESETS[presetIndex].name : "Init";
+      },
+      get modified() {
+        return modified;
+      },
+      get canUndo() {
+        return undoStack.length > 0;
+      },
+      get canRedo() {
+        return redoStack.length > 0;
+      },
+      set(key, value) {
+        const patch = { [key]: value };
+        if (key === "style" && STYLES[value] && STYLES[value].upwardDefault) {
+          patch.upward = true;
+          if (params.upAmount <= 1) patch.upAmount = 1.5;
+        }
+        if (key === "upAmount" && value > 1 && !params.upward) patch.upward = true;
+        const next2 = sanitize({ ...params, ...patch });
+        if (diff(params, next2).length === 0) return;
+        record(key);
+        modified = true;
+        apply(next2);
+      },
+      replaceAll(next2) {
+        apply(sanitize(next2));
+      },
+      // no undo record (used internally and by tests)
+      loadPreset(i) {
+        const idx = (i % PRESETS.length + PRESETS.length) % PRESETS.length;
+        record("preset");
+        presetIndex = idx;
+        modified = false;
+        apply(sanitize({ ...defaults(), bypass: params.bypass, scListen: params.scListen, unity: params.unity, oversampling: params.oversampling, lowLatency: params.lowLatency, tempoSync: params.tempoSync, ...PRESETS[idx].params }));
+      },
+      nextPreset() {
+        store2.loadPreset(presetIndex + 1);
+      },
+      prevPreset() {
+        store2.loadPreset(presetIndex < 0 ? PRESETS.length - 1 : presetIndex - 1);
+      },
+      undo() {
+        if (!undoStack.length) return;
+        redoStack.push({ ...params });
+        lastKey = null;
+        apply(undoStack.pop());
+      },
+      redo() {
+        if (!redoStack.length) return;
+        undoStack.push({ ...params });
+        lastKey = null;
+        apply(redoStack.pop());
+      },
+      ab: {
+        get current() {
+          return current;
+        },
+        switch(slot) {
+          if (slot === current) return;
+          slots[current] = { ...params };
+          const target = { ...slots[slot] || params, bypass: params.bypass, scListen: params.scListen, unity: params.unity, oversampling: params.oversampling, lowLatency: params.lowLatency, tempoSync: params.tempoSync };
+          current = slot;
+          lastKey = null;
+          apply(target);
+        },
+        copyToOther() {
+          slots[current === "A" ? "B" : "A"] = { ...params };
+        }
+      }
+    };
+    return store2;
+  }
+
+  // ui/app.js
+  applyThemeVars();
+  var app = document.getElementById("app");
+  var plugin = document.createElement("div");
+  plugin.id = "plugin";
+  var root = plugin;
+  var el = (tag, cls, html = "") => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html) e.innerHTML = html;
+    return e;
+  };
+  var engine = null;
+  var keyName = "";
+  var hostBpm = 120;
+  var store = createStore({
+    onChange(params, keys) {
+      syncUI(params);
+      if (engine) engine.setParams(Object.fromEntries(keys.map((k) => [k, params[k]])));
+    }
+  });
+  var setParam = (k, v) => store.set(k, v);
+  var top = el("div", "topbar");
+  var logo = el("div", "logo", "Purple<span>&middot;</span>C");
+  var undo = el("button", "icon-btn", "Undo");
+  undo.id = "undo";
+  undo.type = "button";
+  var redo = el("button", "icon-btn", "Redo");
+  redo.id = "redo";
+  redo.type = "button";
+  undo.addEventListener("click", () => store.undo());
+  redo.addEventListener("click", () => store.redo());
+  var ab = el("div", "ab-group");
+  ab.dataset.tooltip = "ab";
+  attachTooltip(ab, TOOLTIPS.ab);
+  var abA = el("button", "icon-btn", "A");
+  var abB = el("button", "icon-btn", "B");
+  var abCopy = el("button", "icon-btn", "Copy");
+  abA.id = "ab-a";
+  abB.id = "ab-b";
+  abCopy.id = "ab-copy";
+  for (const b of [abA, abB, abCopy]) b.type = "button";
+  abA.addEventListener("click", () => store.ab.switch("A"));
+  abB.addEventListener("click", () => store.ab.switch("B"));
+  abCopy.addEventListener("click", () => store.ab.copyToOther());
+  ab.append(abA, abB, abCopy);
+  var prev = el("button", "icon-btn", "&lsaquo;");
+  prev.id = "preset-prev";
+  prev.type = "button";
+  prev.setAttribute("aria-label", "Previous preset");
+  var next = el("button", "icon-btn", "&rsaquo;");
+  next.id = "preset-next";
+  next.type = "button";
+  next.setAttribute("aria-label", "Next preset");
+  prev.addEventListener("click", () => store.prevPreset());
+  next.addEventListener("click", () => store.nextPreset());
+  var presetMenu = createMenu({ buttonId: "preset-name", menuId: "preset-menu", itemClass: "preset-item", items: PRESETS.map((p, i) => ({ id: String(i), label: p.name })), onPick: (id) => store.loadPreset(Number(id)) });
+  var presets = el("div", "preset-group");
+  presets.append(prev, presetMenu, next);
+  var helpBtn = el("button", "icon-btn", "Help");
+  helpBtn.id = "help";
+  helpBtn.type = "button";
+  var fsBtn = el("button", "icon-btn", "Fullscreen");
+  fsBtn.id = "fullscreen";
+  fsBtn.type = "button";
+  fsBtn.addEventListener("click", () => {
+    try {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    } catch {
+    }
+  });
+  var osSeg = createSegmented({ id: "oversampling", label: "", options: [1, 2, 4, 8], labels: { 1: "Off", 2: "2x", 4: "4x", 8: "8x" }, tip: "oversampling", onPick: (v) => setParam("oversampling", v) });
+  var llSwitch = el("button", "switch");
+  llSwitch.id = "low-latency";
+  llSwitch.type = "button";
+  llSwitch.setAttribute("role", "switch");
+  llSwitch.setAttribute("aria-checked", "false");
+  llSwitch.setAttribute("aria-label", "Low latency mode");
+  llSwitch.dataset.tooltip = "lowLatency";
+  attachTooltip(llSwitch, TOOLTIPS.lowLatency);
+  llSwitch.addEventListener("click", () => setParam("lowLatency", !store.params.lowLatency));
+  var popRow = (title, hint, control) => {
+    const r = el("div", "pop-row");
+    const t = el("div", "pop-text", `<div>${title}</div>${hint ? `<small>${hint}</small>` : ""}`);
+    r.append(t, control);
+    return r;
+  };
+  var settingsPanel = el("div", "pop");
+  settingsPanel.id = "settings-panel";
+  settingsPanel.hidden = true;
+  settingsPanel.append(popRow("Oversampling", "Less aliasing, more CPU and delay", osSeg), popRow("Low latency mode", "Graphics at 30 fps, leaves more CPU to the audio", llSwitch));
+  var gearBtn = el("button", "icon-btn gear", '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>');
+  gearBtn.id = "settings-btn";
+  gearBtn.type = "button";
+  gearBtn.setAttribute("aria-label", "Settings");
+  gearBtn.setAttribute("aria-haspopup", "true");
+  gearBtn.setAttribute("aria-expanded", "false");
+  gearBtn.dataset.tooltip = "settings";
+  attachTooltip(gearBtn, TOOLTIPS.settings);
+  var gearWrap = el("div", "gear-wrap");
+  gearWrap.append(gearBtn, settingsPanel);
+  var setPanel = (open) => {
+    settingsPanel.hidden = !open;
+    gearBtn.setAttribute("aria-expanded", String(open));
+  };
+  gearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setPanel(settingsPanel.hidden);
+  });
+  settingsPanel.addEventListener("click", (e) => e.stopPropagation());
+  window.addEventListener("click", () => setPanel(false));
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setPanel(false);
+  });
+  top.append(logo, undo, redo, ab, presets, el("div", "spacer"), helpBtn, fsBtn, gearWrap);
+  root.appendChild(top);
+  var help = el("div", "help-panel");
+  help.id = "help-panel";
+  help.hidden = true;
+  help.innerHTML = "<p>Drag a knob to change it. Shift = fine, mouse wheel = step, Alt+click = reset.</p><p>Drag the threshold line, the KNEE tab and the dots right on the display.</p><p>Hover any control for 2.5 seconds to see a tip (it appears under Help).</p><p>Original/Compressed switches at equal loudness. Bottom left: 1:1 = unity gain (the loudness stays that of the input, so you hear only the effect of the compression), SYNC = Tempo sync (Attack and Release in note values). Double-click the display to reset its zoom.</p><p>AUTO knobs turn by themselves and show the live value (updated 4 times a second). Auto Attack: the knob is the slowest attack, the more the signal overshoots the threshold the faster it gets. Auto Release: about 30 ms for rare hits, up to 800 ms when the sound is compressed all the time.</p>";
+  helpBtn.addEventListener("click", () => {
+    help.hidden = !help.hidden;
+  });
+  root.appendChild(help);
+  var transport = createTransport({
+    onKey(name) {
+      keyName = name;
+      syncUI(store.params);
+    },
+    onBpm(v) {
+      hostBpm = v;
+      if (engine) engine.setParams({ bpm: v });
+      syncUI(store.params);
+    },
+    onEngine(e) {
+      engine = e;
+      e.setMode(transport.getMode());
+      e.setParams(store.params);
+      e.setParams({ bpm: hostBpm });
+      e.onMeters((m) => {
+        window.__lastMeters = m;
+        display.pushMeters(m);
+        meters.push(m);
+        if (Number.isFinite(m.latencySamples)) document.getElementById("latency-readout").textContent = `Latency: ${(1e3 * m.latencySamples / e.ctx.sampleRate).toFixed(1)} ms`;
+        knobs.threshold.setRing(m.inPeakDb, m.thresholdDb);
+        liveAuto(m);
+      });
+    }
+  });
+  app.append(transport.el, plugin);
+  var display = createDisplay({ getParams: () => store.params, setParam });
+  var meters = createMeters();
+  var dRow = el("div", "display-row");
+  dRow.append(display.el, meters.el);
+  var stage = el("div", "stage");
+  var settings = el("div", "settings");
+  stage.append(dRow, settings);
+  root.appendChild(stage);
+  var knobs = {};
+  function liveAuto(m) {
+    const p = store.params;
+    if (p.autoThreshold) knobs.threshold.setLive(m.thresholdDb);
+    if (p.autoAttack) knobs.attack.setLive(m.autoAttackMs);
+    if (p.autoRelease) knobs.release.setLive(m.autoReleaseMs);
+    if (p.autoGain) knobs.gain.setLive(p.gain + (m.autoGainDb || 0));
+  }
+  var fmtMs = (v) => v < 100 ? `${v.toFixed(1)} ms` : `${Math.round(v)} ms`;
+  var SYNC = { release: { note: "releaseNote", list: NOTES, max: 2500, auto: "autoRelease" }, attack: { note: "attackNote", list: ATTACK_NOTES, max: 250, auto: "autoAttack" } };
+  var syncMode = { release: "ms", attack: "ms" };
+  var AUTO = { threshold: ["auto-threshold", "autoThreshold"], attack: ["auto-attack", "autoAttack"], release: ["auto-release", "autoRelease"], gain: ["autogain", "autoGain"] };
+  var knob = (id, label, size, tip) => {
+    const a = AUTO[id];
+    knobs[id] = createKnob({
+      id,
+      label,
+      spec: PARAM_SPECS[id],
+      value: store.params[id],
+      onChange: (v) => setParam(id, v),
+      size,
+      tip,
+      ring: id === "threshold",
+      auto: a ? { id: a[0], tip: a[1], onToggle: () => setParam(a[1], !store.params[a[1]]) } : null
+    });
+    return knobs[id];
+  };
+  var toggles = {};
+  var upToggle = createToggle({ id: "upward", label: "Off", tip: "upward", onClick: () => setParam("upward", !store.params.upward) });
+  var setLamp = () => {
+    const on = store.params.upward;
+    upToggle.setPressed(on);
+    upToggle.textContent = on ? "On" : "Off";
+    upAcc.inner.classList.toggle("sc-off", !on);
+  };
+  toggles.bypass = createToggle({ id: "bypass", label: "Bypass", tip: "bypass", onClick: () => setParam("bypass", !store.params.bypass) });
+  var styleBlock = el("div", "style-block", '<div class="knob-value">&nbsp;</div><div class="knob-label">Style</div>');
+  var styleMenu = createMenu({ buttonId: "style-btn", menuId: "style-menu", itemClass: "style-item", tip: "style", items: Object.entries(STYLES).map(([id, s]) => ({ id, label: s.label })), onPick: (id) => setParam("style", id) });
+  styleBlock.prepend(styleMenu);
+  var settingsMain = el("div", "settings-main");
+  settingsMain.append(knob("threshold", "Threshold"), knob("ratio", "Ratio"), styleBlock, knob("attack", "Attack"), knob("release", "Release"), knob("gain", "Gain"), knob("mix", "Mix"));
+  var settingsSmall = el("div", "settings-small");
+  settingsSmall.append(knob("knee", "Knee", "small"), knob("range", "Range", "small"), knob("lookahead", "Lookahead", "small"), knob("hold", "Hold", "small"));
+  settings.append(settingsMain, settingsSmall);
+  var upOpen = false;
+  var lastUpward = false;
+  var upAcc = createAccordion({ id: "upward-acc", bodyId: "upward-panel", title: "Upward", headerExtra: upToggle, onToggle: (v) => {
+    upOpen = v;
+  } });
+  upAcc.inner.append(knob("upAmount", "Amount", "small"), knob("upWindow", "Window", "small"), knob("upMaxBoost", "Max Boost", "small"), knob("upFloor", "Floor", "small"));
+  toggles.scOn = createToggle({ id: "sc-enable", label: "On", tip: "scOn", onClick: () => setParam("scOn", !store.params.scOn) });
+  var scAcc = createAccordion({ id: "sc-acc", bodyId: "sc-panel", title: "Side Chain", headerExtra: toggles.scOn });
+  var specBuf = new Float32Array(4096);
+  var scEq = createScEq({
+    getParams: () => store.params,
+    setParam,
+    getSpectrum: () => engine && engine.spectrum(specBuf) ? { data: specBuf, sr: engine.ctx.sampleRate } : null,
+    getSampleRate: () => engine ? engine.ctx.sampleRate : 48e3,
+    isVisible: () => scAcc.classList.contains("open")
+  });
+  toggles.scListen = createToggle({ id: "sc-listen", label: "Listen", tip: "scListen", onClick: () => setParam("scListen", !store.params.scListen) });
+  var level = el("div", "sc-level-wrap", '<div class="knob-label">Level</div><input id="sc-level" class="sc-level" type="range" min="-24" max="24" step="0.1" value="0" aria-label="Sidechain level" data-tooltip="scLevel"><div id="sc-level-val" class="knob-value">0.0 dB</div>');
+  var levelInput = level.querySelector("#sc-level");
+  attachTooltip(levelInput, TOOLTIPS.scLevel);
+  levelInput.addEventListener("input", () => setParam("scLevel", Number(levelInput.value)));
+  levelInput.addEventListener("pointerdown", (e) => {
+    if (e.altKey) {
+      e.preventDefault();
+      setParam("scLevel", 0);
+    }
+  });
+  var srcSeg = createSegmented({ id: "sc-source", label: "Source", options: [0, 1], labels: { 0: "Internal", 1: "External" }, tip: "scSource", onPick: (v) => setParam("scExternal", v === 1) });
+  var keyHint = el("div", "sc-key-hint");
+  keyHint.id = "sc-key-hint";
+  var scSide = el("div", "sc-side");
+  scSide.append(srcSeg, keyHint, toggles.scListen);
+  var scKnobs = el("div", "sc-knobs");
+  scKnobs.append(knob("sidechainHpf", "HPF", "small"), knob("scLpf", "LPF", "small"), knob("scBandFreq", "Band Freq", "small", "scBand"), knob("scBandGain", "Band Gain", "small", "scBand"), knob("scBandQ", "Band Q", "small", "scBand"));
+  var scMain = el("div", "sc-main");
+  scMain.append(scEq.el, scKnobs);
+  scAcc.inner.append(level, scMain, scSide);
+  var bottom = el("div", "bottombar");
+  bottom.id = "bottombar";
+  var span = (id) => {
+    const s = el("span", "");
+    s.id = id;
+    return s;
+  };
+  var hotBtn = (id, content, tip, label, onClick) => {
+    const b = el("button", "hot-btn", content);
+    b.id = id;
+    b.type = "button";
+    b.setAttribute("aria-label", label);
+    b.setAttribute("aria-pressed", "false");
+    b.dataset.tooltip = tip;
+    attachTooltip(b, TOOLTIPS[tip]);
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  var unityBtn = hotBtn("unity-gain", "1:1", "unity", "Unity gain", () => setParam("unity", !store.params.unity));
+  var tempoBtn = hotBtn("tempo-sync", "SYNC", "tempoSync", "Tempo sync", () => setParam("tempoSync", !store.params.tempoSync));
+  var hot = el("div", "hotbar");
+  hot.append(unityBtn, tempoBtn, span("bpm-readout"));
+  bottom.append(hot, el("div", "spacer"), span("la-readout"), span("latency-readout"), toggles.bypass);
+  root.append(upAcc, scAcc, bottom);
+  function syncUI(p) {
+    for (const [id, cfg] of Object.entries(SYNC)) {
+      const mode = p.tempoSync && !p[cfg.auto] ? "note" : "ms";
+      if (mode === "note") knobs[id].setSpec({
+        spec: PARAM_SPECS[cfg.note],
+        value: p[cfg.note],
+        onChange: (v) => setParam(cfg.note, Math.round(v)),
+        format: (v) => `${cfg.list[Math.round(v)].label} \xB7 ${fmtMs(noteToMs(v, hostBpm, cfg.list, cfg.max))}`
+      });
+      else if (syncMode[id] === "note") knobs[id].setSpec({ spec: PARAM_SPECS[id], value: p[id], onChange: (v) => setParam(id, v) });
+      syncMode[id] = mode;
+    }
+    for (const [id, k] of Object.entries(knobs)) {
+      const key = syncMode[id] === "note" ? SYNC[id].note : id;
+      if (k.value !== p[key]) k.setValue(p[key]);
+    }
+    for (const [knobId, [, key]] of Object.entries(AUTO)) knobs[knobId].setAuto(p[key]);
+    setLamp();
+    toggles.bypass.setPressed(p.bypass);
+    styleMenu.setLabel(STYLES[p.style].label);
+    if (p.upward && !lastUpward) upOpen = true;
+    lastUpward = p.upward;
+    upAcc.setOpen(upOpen);
+    presetMenu.setLabel(store.presetName + (store.modified ? " *" : ""));
+    unityBtn.setAttribute("aria-pressed", String(p.unity));
+    tempoBtn.setAttribute("aria-pressed", String(p.tempoSync));
+    {
+      const r = document.getElementById("bpm-readout");
+      r.textContent = p.tempoSync ? `${hostBpm} BPM` : "";
+    }
+    osSeg.setValue(p.oversampling);
+    llSwitch.setAttribute("aria-checked", String(p.lowLatency));
+    setLowLatency(p.lowLatency);
+    document.getElementById("la-readout").textContent = `Lookahead: ${p.lookahead.toFixed(1)} ms`;
+    undo.disabled = !store.canUndo;
+    redo.disabled = !store.canRedo;
+    abA.setAttribute("aria-pressed", String(store.ab.current === "A"));
+    abB.setAttribute("aria-pressed", String(store.ab.current === "B"));
+    levelInput.value = String(p.scLevel);
+    document.getElementById("sc-level-val").textContent = `${p.scLevel >= 0 ? "+" : ""}${p.scLevel.toFixed(1)} dB`;
+    toggles.scOn.setPressed(p.scOn);
+    toggles.scOn.textContent = p.scOn ? "On" : "Off";
+    scAcc.inner.classList.toggle("sc-off", !p.scOn);
+    scAcc.inner.inert = !p.scOn;
+    toggles.scListen.setPressed(p.scListen);
+    srcSeg.setValue(p.scExternal ? 1 : 0);
+    keyHint.textContent = !p.scExternal ? "" : keyName ? `Key: ${keyName}` : "No key track: use Load sidechain audio above";
+    keyHint.classList.toggle("warn", p.scExternal && !keyName);
+  }
+  syncUI(store.params);
+  window.__TOOLTIPS = TOOLTIPS;
+  window.__audioState = () => transport.getEngine() ? transport.getEngine().ctx.state : "not-started";
+  window.__engineState = () => transport.getEngine() ? { ...transport.getEngine().state } : { duration: 0, position: 0, playing: false };
+  window.__geom = () => display.geom();
+  window.__frameInterval = () => frameInterval();
+  window.__timeWindow = () => display.windowSeconds();
+  window.__handles = () => display.handles();
+  window.__scGeom = () => scEq.geom();
+  window.__scNodes = () => scEq.nodes();
+  window.__drawnThreshold = () => display.drawnThreshold();
+  window.__params = () => store.params;
+  window.__setParam = setParam;
+  window.__engineMode = () => transport.getEngine() ? transport.getEngine().mode : "not-started";
+})();
+</script>
+</body>
+</html>

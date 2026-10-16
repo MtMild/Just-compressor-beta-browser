@@ -1,0 +1,53 @@
+// Single source of colour. Purple is the main colour (hue 255-295); red (hue 350-10) only in details
+// (gain reduction, clipping); black/white and neutral greys (saturation < 8%) complete the palette.
+export const COLORS = {
+  bg0: 'hsl(265 18% 5%)',
+  bg1: 'hsl(265 16% 8%)',
+  panel: 'hsl(265 14% 11%)',
+  panelHi: 'hsl(265 12% 15%)',
+  edge: 'hsl(265 10% 22%)',
+  text: 'hsl(0 0% 93%)',
+  textDim: 'hsl(0 0% 62%)',
+  white: 'hsl(0 0% 98%)',
+  grey1: 'hsl(0 0% 40%)',
+  grey2: 'hsl(0 0% 22%)',
+  grey3: 'hsl(0 0% 14%)',
+  zoneBg: 'hsl(0 0% 20% / 0.42)',
+  zoneFade: 'hsl(0 0% 20% / 0.04)',
+  meltFrom: 'hsl(265 18% 5% / 0)',
+  gridMinor: 'hsl(265 12% 18% / 0.45)',
+  ghostFill: 'hsl(0 0% 70% / 0.08)',
+  ghostLine: 'hsl(0 0% 80% / 0.38)',
+  histFade: 'hsl(0 0% 62% / 0.03)',
+  outFill: 'hsl(272 7% 68% / 0.32)',
+  outFade: 'hsl(272 7% 68% / 0.04)',
+  outLine: 'hsl(274 75% 88%)',
+  rangeLine: 'hsl(2 40% 56% / 0.42)',
+  rangeText: 'hsl(2 40% 66% / 0.75)',
+  scBg: 'hsl(0 0% 12%)',
+  accent: 'hsl(272 86% 68%)',
+  accentHi: 'hsl(280 92% 82%)',
+  accentLo: 'hsl(266 62% 46%)',
+  glow: 'hsl(274 92% 66% / 0.38)',
+  grid: 'hsl(265 12% 18%)',
+  histFill: 'hsl(0 0% 62% / 0.30)',
+  histLine: 'hsl(0 0% 85% / 0.75)',
+  red: 'hsl(2 82% 56%)',
+  redFill: 'hsl(2 82% 56% / 0.25)',
+  redDim: 'hsl(2 60% 38%)',
+  gr: 'hsl(2 82% 56%)',
+  grFill: 'hsl(2 82% 56% / 0.10)',
+  boost: 'hsl(276 80% 88%)',
+  boostFill: 'hsl(276 80% 80% / 0.28)',
+  curve: 'hsl(278 74% 74%)',
+  thresholdLine: 'hsl(0 0% 80% / 0.7)',
+  meterLow: 'hsl(262 70% 40%)',
+  meterMid: 'hsl(272 82% 58%)',
+  meterHi: 'hsl(286 92% 80%)',
+  clip: 'hsl(2 90% 58%)',
+};
+
+const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
+export function applyThemeVars(root = document.documentElement) {
+  for (const [k, v] of Object.entries(COLORS)) root.style.setProperty('--' + kebab(k), v);
+}
